@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>梧桐花科技 2026年项目数据分析仪表盘 v7 | 更新: 2026-07-28</title>
+<title>梧桐花科技 2026年项目数据分析仪表盘 v8 | 更新: 2026-07-29</title>
 <script>
 /**
  * Skipped minification because the original files appears to be already minified.
@@ -248,7 +248,7 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 <body>
 
 <div class="header">
-  <h1>🌺 梧桐花科技 2026年项目数据分析仪表盘 v7</h1>
+  <h1>🌺 梧桐花科技 2026年项目数据分析仪表盘 v8</h1>
   <div class="header-right">
     <span class="time" id="updateTime">加载中...</span>
     <span style="font-size:12px"><span class="sync-dot"></span> 就绪</span>
@@ -265,6 +265,7 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 <div class="main-content">
   <div class="panel active" id="panel-overview"></div>
   <div class="panel" id="panel-projects"></div>
+  <div class="panel" id="panel-gantt"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -368,6 +369,12 @@ function init() {
         tab.onclick=()=>switchTeam(team);
         navTabs.appendChild(tab);
     });
+    // 项目甘特图（搭建中）：独立 tab，置于团队之后
+    const ganttTab=document.createElement('div');
+    ganttTab.className='nav-tab'; ganttTab.dataset.tab='gantt';
+    ganttTab.innerHTML='📊 项目甘特图（搭建中）';
+    ganttTab.onclick=()=>switchTeam('gantt');
+    navTabs.appendChild(ganttTab);
     renderOverview();
     renderTeamPanels();
 }
@@ -380,6 +387,7 @@ function switchTeam(team) {
     document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
     if(team==='overview'){document.getElementById('panel-overview').classList.add('active');renderOverview();}
     else if(team==='projects'){document.getElementById('panel-projects').classList.add('active');renderProjects();}
+    else if(team==='gantt'){document.getElementById('panel-gantt').classList.add('active');renderGanttPanel();}
     else{
         const panelId='panel-'+safeTeamId(team);
         const panel=document.getElementById(panelId);
@@ -448,8 +456,7 @@ function renderOverview() {
         {id:'sec-ov-cards', label:'类别与目标概览'},
         {id:'sec-ov-trend', label:'各类别月度趋势'},
         {id:'sec-ov-summary', label:'大类月度汇总'},
-        {id:'sec-ov-cost', label:'项目成本汇总'},
-        {id:'sec-ov-gantt', label:'项目甘特图'}
+        {id:'sec-ov-cost', label:'项目成本汇总'}
     ])+'<div id="sec-ov-cards"><div class="cards">';
     DISPLAY_CATEGORIES.forEach(cat=>{
         const catData=DATA.categories[cat]||{};
@@ -596,9 +603,6 @@ function renderOverview() {
     });
     cardsHtml+='</tbody></table></div>';
 
-    // ===== 项目甘特图（进行中 / 待开展 / 停滞） =====
-    cardsHtml+='<div id="ganttContainer"></div>';
-
     container.innerHTML=cardsHtml;
     setTimeout(()=>{
         renderOverviewCharts(months);
@@ -639,9 +643,6 @@ function renderOverviewCharts(months) {
                 plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:12}}},
                 scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'小时'}}}}});
     }
-
-    // 项目甘特图（进行中 / 待开展 / 停滞）
-    renderGantt();
 }
 
 // ============ 团队面板 ============
@@ -1322,12 +1323,19 @@ let ganttYear='2026';
 const GANTT_STATUS_ORDER=['进行中','待开展','停滞'];
 const GANTT_STATUS_COLOR={'进行中':'#3498db','待开展':'#f39c12','停滞':'#e74c3c'};
 function monthIdxG(s){ if(!s) return null; const m=s.slice(0,7); const p=m.split('-'); if(p.length<2) return null; return parseInt(p[0])*12+(parseInt(p[1])-1); }
+function renderGanttPanel(){
+    const panel=document.getElementById('panel-gantt');
+    if(!panel) return;
+    panel.innerHTML='<div class="section-nav"><span class="sn-label">📊 项目甘特图（搭建中）</span></div><div id="ganttContainer"></div>';
+    renderGantt();
+}
+
 function renderGantt(){
   const el=document.getElementById('ganttContainer');
   if(!el) return;
   const data=((typeof GANTT_DATA!=='undefined'&&GANTT_DATA&&GANTT_DATA.projects)||[]);
   if(!data.length){
-    el.innerHTML='<div class="table-box" id="sec-ov-gantt"><h3>📊 项目甘特图（进行中 / 待开展 / 停滞）</h3><div class="gantt-empty">（数据生成中，请重新部署后查看）</div></div>';
+    el.innerHTML='<div class="table-box" id="sec-gantt"><h3>📊 项目甘特图（进行中 / 待开展 / 停滞）</h3><div class="gantt-empty">（数据生成中，请重新部署后查看）</div></div>';
     return;
   }
   function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -1363,7 +1371,7 @@ function renderGantt(){
   GANTT_STATUS_ORDER.forEach(s=>groups[s]=[]);
   list.forEach(p=>{const k=GANTT_STATUS_ORDER.indexOf(p.status)>=0?p.status:'其他';(groups[k]=groups[k]||[]).push(p);});
   Object.values(groups).forEach(arr=>arr.sort((a,b)=>(a.start||'9').localeCompare(b.start||'9')));
-  let h='<div class="table-box" id="sec-ov-gantt"><h3>📊 项目甘特图（进行中 / 待开展 / 停滞）</h3>';
+  let h='<div class="table-box" id="sec-gantt"><h3>📊 项目甘特图（进行中 / 待开展 / 停滞）</h3>';
   h+='<div class="gantt-toolbar"><label>年份：</label><select onchange="ganttYear=this.value;renderGantt()">'+years.map(y=>'<option value="'+y+'"'+(y===Y?' selected':'')+'>'+y+'年</option>').join('')+'</select>';
   h+='<span class="gantt-legend">';
   GANTT_STATUS_ORDER.forEach(s=>{h+='<span class="gantt-leg" style="background:'+GANTT_STATUS_COLOR[s]+'"></span>'+s;});
