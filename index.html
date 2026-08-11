@@ -1485,7 +1485,7 @@ const GANTT_STATUS_COLOR={'进行中':'#3498db','待开展':'#f39c12','停滞':'
 const GANTT_CURRENT_COLOR='#16a085'; // 目前时间色块（已用周期）
 const TODAY=(function(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})();
 const REQ_LABELS=['课程视频','宣传片/课程概述','课件','二维动画','三维动画','交互','虚拟仿真','数字教材美化'];
-// V-AC 列映射 (0-based): 用于回写腾讯文档 01项目数据录入
+// V-AC 列映射 (0-based): 记录编辑项对应的源表列索引（本地元数据，已取消回写腾讯文档）
 const REQ_COL_MAP={'课程视频':21,'宣传片/课程概述':22,'课件':23,'二维动画':24,'三维动画':25,'交互':26,'虚拟仿真':27,'数字教材美化':28};
 // 地区颜色映射（短名 → {color, bg}）
 const REGION_MAP={
