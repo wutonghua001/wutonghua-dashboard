@@ -318,9 +318,9 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .gt-bar-seg{height:100%;transition:width .3s;position:absolute;left:0;top:0;border-radius:4px;box-sizing:border-box;}
 .gt-bar-seg.gt-bar-required{background:#a8d0e6;z-index:1;}  /* 纯色浅蓝：要求数量 */
 .gt-bar-seg.gt-bar-actual{background:#27ae60;z-index:2;}  /* 纯色绿：实际完成（可超出要求） */
-.gt-bar-tag{position:absolute;top:50%;transform:translateY(-50%);font-size:10px;font-weight:700;padding:1px 5px;line-height:1.2;border-radius:3px;white-space:nowrap;z-index:3;background:rgba(255,255,255,.85);}
-.gt-bar-act-tag{left:4px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.3);}
-.gt-bar-req-tag{right:4px;color:#1a5276;}
+.gt-bar-tag{position:absolute;top:50%;transform:translateY(-50%);font-size:10px;font-weight:700;padding:1px 5px;line-height:1.2;border-radius:3px;white-space:nowrap;z-index:3;}
+.gt-bar-act-tag{right:auto;left:4px;color:#fff;background:rgba(39,174,96,.9);text-shadow:0 1px 2px rgba(0,0,0,.4);border:1px solid rgba(30,130,70,.7);}  /* 深绿底白字：在绿色条上清晰可辨 */
+.gt-bar-req-tag{left:auto;right:4px;color:#1a3a5c;background:rgba(255,255,255,.92);text-shadow:0 1px 1px rgba(0,0,0,.15);border:1px solid rgba(160,180,200,.5);}  /* 白底深蓝字：在浅蓝条上清晰可辨 */
 /* 搜索下拉（实时匹配） */
 .gantt-search-wrap{display:inline-block;position:relative;}
 .gt-search-dd{display:none;position:fixed;z-index:9999;background:#fff;border:1px solid #d9e2ec;border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.15);max-height:300px;overflow-y:auto;}
@@ -1867,20 +1867,8 @@ function renderGantt(){
       h+='</div>';
       h+='<div class="gt-bar-legend"><span class="gt-leg-dot" style="background:#27ae60"></span>实际完成 <span class="gt-leg-dot" style="background:#a8d0e6"></span>要求数量</div>';
     } else {
-      // 无要求数据时保留原有团队视图（降级）
-      let teams=Object.keys(wt);
-      if(onlyTeam) teams=teams.filter(t=>t===onlyTeam);
-      if(teams.length){
-        teams.forEach(team=>{
-          const video=(wt[team]&&wt[team].video)||0;
-          h+='<div class="gt-node gt-team" id="gtn-'+gtId(pname)+'-'+gtId(team)+'">'
-            +'<div class="gt-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gt-st-name">'+esc(team)+'</span>'+(video?' <span class="gt-cnt gt-cnt-team">视频 '+video+'</span>':'')+'</div><div class="gantt-track-col"></div></div>'
-            +'<div class="gt-children" hidden id="gtc-'+gtId(pname)+'-'+gtId(team)+'">'+subsHtml(pname,team)+'</div>'
-            +'</div>';
-        });
-      } else {
-        h+='<div class="gt-row gt-fixed"><div class="gantt-label-col"><span class="gt-note">（该项目在 2026 数据底版中未匹配到团队/视频数据）</span></div></div>';
-      }
+      // 无 V-AC 要求数据时不展示团队子数据行，保持空白
+      // （团队视频数来自 WBS 聚合，非 V-AC 要求数据，用户要求不显示）
     }
     return h;
   }
