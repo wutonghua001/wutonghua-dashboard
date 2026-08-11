@@ -304,6 +304,20 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .dept-team-btn{padding:6px 16px;border:1px solid #d9e2ec;border-radius:20px;background:#fff;color:#5a6b80;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .dept-team-btn:hover{background:#f0f7fc;color:#2d6a9f;border-color:#bcd7ef;}
 .dept-team-btn.active{background:#2d6a9f;color:#fff;border-color:#2d6a9f;}
+
+/* 地区标签（所有地区统一） */
+.gt-region{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:10px;margin-left:4px;vertical-align:middle;line-height:1.6;}
+/* 要求数量已修改标记 */
+.gt-req-dirty{border-color:#e67e22!important;background:#fef6ec!important;animation:gtPulse 1.5s ease-in-out 3;}
+@keyframes gtPulse{0%,100%{box-shadow:0 0 0 0 rgba(230,126,34,.3);}50%{box-shadow:0 0 0 4px rgba(230,126,34,.1);}}
+/* 合并双色条形图 */
+.gt-bar-merged{flex:1;max-width:280px;height:22px;background:#f0f2f5;border-radius:4px;display:flex;overflow:hidden;position:relative;min-width:120px;}
+.gt-bar-seg{height:100%;transition:width .3s;position:relative;}
+.gt-bar-seg.gt-bar-actual{background:#27ae60;}
+.gt-bar-seg.gt-bar-required{background:#3498db;}
+.gt-bar-tag{position:absolute;top:50%;transform:translateY(-50%);font-size:10px;font-weight:700;padding:0 4px;line-height:1.2;border-radius:2px;white-space:nowrap;z-index:1;}
+.gt-bar-act-tag{left:4px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.3);}
+.gt-bar-req-tag{right:4px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.3);}
 </style>
 </head>
 <body>
@@ -1448,6 +1462,24 @@ const TODAY=(function(){const d=new Date();return d.getFullYear()+'-'+String(d.g
 const REQ_LABELS=['课程视频','宣传片/课程概述','课件','二维动画','三维动画','交互','虚拟仿真','数字教材美化'];
 // V-AC 列映射 (0-based): 用于回写腾讯文档 01项目数据录入
 const REQ_COL_MAP={'课程视频':21,'宣传片/课程概述':22,'课件':23,'二维动画':24,'三维动画':25,'交互':26,'虚拟仿真':27,'数字教材美化':28};
+// 地区颜色映射（短名 → {color, bg}）
+const REGION_MAP={
+  '河南地区':{short:'河南',color:'#fff',bg:'#e67e22'},
+  '江苏地区':{short:'江苏',color:'#fff',bg:'#3498db'},
+  '广东地区':{short:'广东',color:'#fff',bg:'#9b59b6'},
+  '湖南地区':{short:'湖南',color:'#fff',bg:'#1abc9c'},
+  '福建地区':{short:'福建',color:'#fff',bg:'#e74c3c'},
+  '江西地区':{short:'江西',color:'#fff',bg:'#f39c12'},
+  '四川地区':{short:'四川',color:'#fff',bg:'#2ecc71'},
+  '广西地区':{short:'广西',color:'#fff',bg:'#e91e63'}
+};
+function regionTag(region){
+  if(!region) return '';
+  const r=REGION_MAP[region];
+  if(r) return '<span class="gt-region" style="background:'+r.bg+';color:'+r.color+'">'+r.short+'</span>';
+  // 未映射的地区用默认灰色
+  return '<span class="gt-region" style="background:#95a5a6;color:#fff">'+region.replace('地区','')+'</span>';
+}
 // 要求数量本地修改记录 (localStorage key: gantt_req_edits_v1)
 function getReqEdits(){ try{ return JSON.parse(localStorage.getItem('gantt_req_edits_v1')||'{}'); }catch(e){return {};} }
 function saveReqEdits(e){ localStorage.setItem('gantt_req_edits_v1', JSON.stringify(e)); }
@@ -1592,52 +1624,55 @@ function renderGantt(){
     return chips?('<div class="gt-req-row"><span class="gt-req-label">要求数量：</span>'+chips+'</div>'):'';
   }
   function reqEditStart(el){
+    ev=window.event; if(ev) ev.stopPropagation();
     const nm=el.dataset.nm; const val=el.dataset.val; const pkey=el.dataset.pk||el.dataset.pkey;
     const input=document.createElement('input');
     input.type='number'; input.value=val; input.min=0; input.step=1;
-    input.className='gt-req-input'; input.style.cssText='width:60px;padding:2px 4px;border:1px solid #2d6a9f;border-radius:3px;font-size:12px;font-weight:700;color:#16a085;text-align:center;';
-    input.onclick=function(ev){ev.stopPropagation();};
+    input.className='gt-req-input'; input.style.cssText='width:60px;padding:2px 4px;border:1px solid #2d6a9f;border-radius:3px;font-size:13px;font-weight:700;color:#16a085;text-align:center;outline:none;box-shadow:0 0 0 2px rgba(45,106,159,.2);';
+    input.onclick=function(e){e.stopPropagation();};
     input.onblur=function(){ reqEditConfirm(el, pkey, nm, this.value); };
-    input.onkeydown=function(ev){ if(ev.key==='Enter'){ev.preventDefault(); this.blur();} if(ev.key==='Escape'){el.style.display=''; el.previousSibling&&el.previousSibling.remove(); } };
+    input.onkeydown=function(ev){ if(ev.key==='Enter'){ev.preventDefault(); this.blur();} if(ev.key==='Escape'){el.style.display=''; if(el.previousSibling) el.previousSibling.remove(); } };
     const sp=document.createElement('span'); sp.appendChild(input); el.parentNode.insertBefore(sp, el); el.style.display='none'; input.focus(); input.select();
   }
+  // 要求数量编辑确认：更新内存 + localStorage + 标记待同步 + 尝试自动回写
   function reqEditConfirm(el, pkey, nm, newVal){
     const num=parseFloat(newVal);
     if(isNaN(num)||num<0){ el.style.display=''; if(el.previousSibling) el.previousSibling.remove(); showToast('请输入有效数字','error'); return; }
+    const oldVal=parseFloat(el.dataset.val)||0;
     // 更新内存
     if(typeof GANTT_DATA!=='undefined'&&GANTT_DATA&&GANTT_DATA.req){
       if(!GANTT_DATA.req[pkey]) GANTT_DATA.req[pkey]={};
       GANTT_DATA.req[pkey][nm]=num;
     }
-    // 更新 localStorage 待写队列
+    // 更新 localStorage 待写队列（含完整元数据，供 sync 脚本使用）
     const edits=getReqEdits();
     if(!edits[pkey]) edits[pkey]={};
-    edits[pkey][nm]=num;
+    edits[pkey][nm]={v:num, col:REQ_COL_MAP[nm], old:oldVal, ts:new Date().toISOString()};
     saveReqEdits(edits);
     // 更新 DOM
     el.dataset.val=num;
     el.querySelector('b').textContent=num;
+    el.classList.add('gt-req-dirty'); // 标记已修改
     el.style.display='';
     if(el.previousSibling) el.previousSibling.remove();
-    showToast(esc(nm)+' 已更新为 '+num,'success');
-    // 重绘当前展开（刷新子任务条形图等）
+    showToast(esc(nm)+' → '+num+'（待同步腾讯文档）','success',3000);
+    // 重绘当前展开（刷新条形图等）
     gtRerender(pkey);
+    // 自动触发回写（通过自定义事件通知外部）
+    try{ window.dispatchEvent(new CustomEvent('ganttReqEdit',{detail:{pkey,nm,num,col:REQ_COL_MAP[nm]}})); }catch(e){}
   }
   function projectChildrenHtml(p,onlyTeam){
     const pname=p.name; const pkey=normName(pname);
     const wt=wbs[pkey]||{};
     const req=(typeof GANTT_DATA!=='undefined'&&GANTT_DATA&&GANTT_DATA.req)||{};
     const r=req[pkey]||{};
+    let h='';
 
-    // 第一行：项目周期（固定）
-    let h='<div class="gt-row gt-fixed"><span class="gt-caret-sp"></span><div class="gantt-label-col"><span class="gt-st-name">📌 项目周期（固定）</span></div><div class="gantt-track-col">'+barInner(p)+'</div></div>';
-
-    // 计算该项目各团队的视频合计（作为"课程视频"的实际完成数）
+    // 计算该项目各团队的视频合计
     let totalVideo=0;
     Object.values(wt).forEach(t=>{ totalVideo+=(t&&t.video)||0; });
 
-    // 要求数量类型行（仅显示有值的类型）
-    const typeLabels={'课程视频':'video','宣传片/课程概述':'promo','课件':'courseware','二维动画':'anim2d','三维动画':'anim3d','交互':'interactive','虚拟仿真':'vrsim','数字教材美化':'digital'};
+    // 要求数量类型行（仅显示有值的类型）—— 双色合并条形图
     const hasTypes=[];
     REQ_LABELS.forEach(nm=>{ if(r[nm]!=null && r[nm]!='') hasTypes.push(nm); });
 
@@ -1645,11 +1680,9 @@ function renderGantt(){
       h+='<div class="gt-req-type-section">';
       hasTypes.forEach(nm=>{
         const reqVal=parseFloat(r[nm])||0;
-        // 实际完成数：课程视频用 wbs 合计，其他暂显示为待统计(后续可从 cases 数据取)
         let actualVal=0;
         if(nm==='课程视频') actualVal=Math.round(totalVideo);
         else if(typeof PROJECT_CASES!=='undefined'&&PROJECT_CASES){
-          // 尝试从 cases 中按项目名匹配取大类数据
           const pc=(PROJECT_CASES.cases||[]).find(c=>normName(c.name)===pkey);
           if(pc&&pc.cats){
             const catMap={'二维动画':'二维动画','三维动画':'其他','交互':'交互功能','虚拟仿真':'虚拟仿真','数字教材美化':'数字教材排版','课件':'其他','宣传片/课程概述':'其他'};
@@ -1662,19 +1695,15 @@ function renderGantt(){
         h+='<div class="gt-row gt-req-type-row">'
           +'<div class="gantt-label-col"><span class="gt-type-name">'+esc(nm)+'</span></div>'
           +'<div class="gantt-track-col gt-bar-cell">'
-          +'<div class="gt-bar-wrap">'
-          +'<div class="gt-bar gt-bar-actual" style="width:'+actualPct+'%" title="实际完成: '+actualVal+'"></div>'
-          +'<span class="gt-bar-label gt-bar-actual-lbl">'+actualVal+'</span>'
+          +'<div class="gt-bar-merged" title="实际完成: '+actualVal+' | 要求数量: '+reqVal+'">'
+          +'<div class="gt-bar-seg gt-bar-actual" style="width:'+actualPct+'%"></div>'
+          +'<div class="gt-bar-seg gt-bar-required" style="width:'+reqPct+'%"></div>'
+          +'<span class="gt-bar-tag gt-bar-act-tag">'+actualVal+'</span>'
+          +'<span class="gt-bar-tag gt-bar-req-tag">'+reqVal+'</span>'
           +'</div>'
-          +'<div class="gt-bar-wrap">'
-          +'<div class="gt-bar gt-bar-required" style="width:'+reqPct+'%" title="要求数量: '+reqVal+'"></div>'
-          +'<span class="gt-bar-label gt-bar-req-lbl">'+reqVal+'</span>'
-          +'</div>'
-          +'</div>'
-          +'</div>';
+          +'</div></div>';
       });
       h+='</div>';
-      // 图例
       h+='<div class="gt-bar-legend"><span class="gt-leg-dot" style="background:#27ae60"></span>实际完成 <span class="gt-leg-dot" style="background:#3498db"></span>要求数量</div>';
     } else {
       // 无要求数据时保留原有团队视图（降级）
@@ -1717,7 +1746,7 @@ function renderGantt(){
   if(ganttSortMode==='project'){
     list.forEach(p=>{
       h+='<div class="gt-node gt-project" data-pname="'+esc(p.name)+'">'
-        +'<div class="gt-row gt-proj-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gantt-name">'+esc(p.name)+'</span>'+(p.school?'<span class="gantt-school">'+esc(p.school)+'</span>':'')+(p.is_henan?'<span class="gantt-hn">河南</span>':'')+(p.status?' <span class="gt-status-dot" style="background:'+GANTT_STATUS_COLOR[p.status]+'"></span>':'')+'</div><div class="gantt-track-col">'+barInner(p)+'</div></div>'
+        +'<div class="gt-row gt-proj-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gantt-name">'+esc(p.name)+'</span>'+(p.school?'<span class="gantt-school">'+esc(p.school)+'</span>':'')+regionTag(p.region)+(p.status?' <span class="gt-status-dot" style="background:'+GANTT_STATUS_COLOR[p.status]+'"></span>':'')+'</div><div class="gantt-track-col">'+barInner(p)+'</div></div>'
         +'<div class="gt-children" hidden>'+reqHtml(p)+projectChildrenHtml(p,null)+'</div>'
         +'</div>';
     });
@@ -1733,7 +1762,7 @@ function renderGantt(){
           +'<div class="gt-children" hidden>';
         ps.forEach(p=>{
           h+='<div class="gt-node gt-project" data-pname="'+esc(p.name)+'">'
-            +'<div class="gt-row gt-proj-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gantt-name">'+esc(p.name)+'</span>'+(p.school?'<span class="gantt-school">'+esc(p.school)+'</span>':'')+'</div><div class="gantt-track-col"></div></div>'
+            +'<div class="gt-row gt-proj-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gantt-name">'+esc(p.name)+'</span>'+(p.school?'<span class="gantt-school">'+esc(p.school)+'</span>':'')+regionTag(p.region)+'</div><div class="gantt-track-col"></div></div>'
             +'<div class="gt-children" hidden>'+projectChildrenHtml(p,team)+'</div>'
             +'</div>';
         });
@@ -1744,7 +1773,7 @@ function renderGantt(){
     }
   }
   h+='</div>';
-  h+='<div class="gantt-note">时间块配色：<span style="display:inline-block;width:10px;height:10px;background:#3498db;border-radius:2px;vertical-align:middle"></span> 项目周期（浅色底）＋ <span style="display:inline-block;width:10px;height:10px;background:#16a085;border-radius:2px;vertical-align:middle"></span> 目前时间（深绿，从开始到今天）。「项目排序」：进行中 + 河南 优先（并列加权），点击项目展开 → 第一行固定「项目周期」色块，其下为「要求数量」类型行（仅显示 V-AC 有值的类型），每行含 <span style="display:inline-block;width:10px;height:10px;background:#27ae60;border-radius:2px;vertical-align:middle"></span> 实际完成 与 <span style="display:inline-block;width:10px;height:10px;background:#3498db;border-radius:2px;vertical-align:middle"></span> 要求数量 条形对比。要求数量可点击 ✎ 修改。无 V-AC 数据的项目保留原团队子任务视图。共 '+list.length+' 个项目与 '+Y+' 年重叠。</div>';
+  h+='<div class="gantt-note">时间块配色：<span style="display:inline-block;width:10px;height:10px;background:#3498db;border-radius:2px;vertical-align:middle"></span> 项目周期（浅色底）＋ <span style="display:inline-block;width:10px;height:10px;background:#16a085;border-radius:2px;vertical-align:middle"></span> 目前时间（深绿，从开始到今天）。「项目排序」：进行中 + 河南 优先（并列加权），点击项目展开 → 「要求数量」类型行（仅显示 V-AC 有值的类型），每行双色条形图 <span style="display:inline-block;width:10px;height:10px;background:#27ae60;border-radius:2px;vertical-align:middle"></span> 实际完成 + <span style="display:inline-block;width:10px;height:10px;background:#3498db;border-radius:2px;vertical-align:middle"></span> 要求数量。要求数量可点击 ✎ 修改（自动标记待同步）。所有项目均显示地区色块标签。无 V-AC 数据的项目保留原团队子任务视图。共 '+list.length+' 个项目与 '+Y+' 年重叠。</div>';
   h+='</div>';
   el.innerHTML=h;
   el.onclick=ganttClickHandler;
