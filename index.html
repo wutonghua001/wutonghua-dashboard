@@ -223,7 +223,8 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .gantt-leg{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:3px}
 .gantt{overflow-x:auto}
 .gantt-head,.gantt-row{display:flex;align-items:stretch;border-bottom:1px solid #f2f4f7}
-.gantt-label-col{width:300px;min-width:260px;max-width:420px;padding:7px 10px;font-size:14px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid #eef1f5}
+.gantt-label-col{width:280px;min-width:240px;max-width:400px;padding:7px 10px;font-size:14px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid #eef1f5}
+.gantt-progress-col{width:80px;min-width:60px;padding:7px 8px;font-size:13px;display:flex;align-items:center;border-right:1px solid #eef1f5;color:#555;flex-shrink:0}
 .gantt-track-col{flex:1;padding:7px 0;position:relative}
 .gantt-axis{display:flex}
 .gantt-axis span{flex:1;text-align:center;font-size:11px;color:#9aa3b2;border-left:1px dashed #eef1f5;padding:2px 0}
@@ -266,7 +267,7 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .gt-proj-row{background:#fff;}
 .gt-proj-row:hover{background:#f7fafd;}
 .gt-status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;;margin-left:5px;vertical-align:middle;}
-.gt-progress-tag{display:inline-block;font-size:11px;font-weight:600;color:#fff;background:linear-gradient(135deg,#2ecc71,#27ae60);border-radius:4px;padding:1px 6px;margin-left:5px;vertical-align:middle;white-space:nowrap;letter-spacing:.3px;}  /* 进度标签：来自01项目数据录入L列 */
+.gt-progress-tag{display:inline-block;font-size:12px;font-weight:500;color:#555;margin-left:0;vertical-align:middle;white-space:nowrap;}  /* 进度列：纯文本无背景色 */
 .gt-subtask{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 38px;font-size:14px;border-bottom:1px dashed #eef1f5;}
 .gt-subtask:hover{background:#f4f8fc;}
 .gt-st-name{font-weight:500;color:#34495e;}
@@ -1856,6 +1857,7 @@ function renderGantt(){
         const actualPct=actualVal>0?Math.round(actualVal/maxVal*100):0;
         h+='<div class="gt-row gt-req-type-row">'
           +'<div class="gantt-label-col"><span class="gt-type-name">'+esc(nm)+'</span></div>'
+          +'<div class="gantt-progress-col"></div>'
           +'<div class="gantt-track-col gt-bar-cell">'
           +'<div class="gt-bar-merged" title="实际完成: '+actualVal+' | 要求数量: '+reqVal+'">'
           +'<div class="gt-bar-seg gt-bar-required" style="width:'+reqPct+'%"></div>'
@@ -1893,11 +1895,11 @@ function renderGantt(){
   h+='<span class="gantt-legend">';
   GANTT_STATUS_ORDER.forEach(s=>{h+='<span class="gantt-leg" style="background:'+GANTT_STATUS_COLOR[s]+'"></span>'+s;});
   h+='</span></div>';
-  h+='<div class="gantt"><div class="gantt-head"><div class="gantt-label-col">'+(ganttSortMode==='project'?'项目（点击展开团队 / 子任务）':'团队（点击展开项目）')+'</div><div class="gantt-track-col"><div class="gantt-axis">'+monthLabels.map(m=>'<span>'+m+'</span>').join('')+'</div></div></div>';
+  h+='<div class="gantt"><div class="gantt-head"><div class="gantt-label-col">'+(ganttSortMode==='project'?'项目（点击展开团队 / 子任务）':'团队（点击展开项目）')+'</div><div class="gantt-progress-col">进度</div><div class="gantt-track-col"><div class="gantt-axis">'+monthLabels.map(m=>'<span>'+m+'</span>').join('')+'</div></div></div>';
   if(ganttSortMode==='project'){
     list.forEach(p=>{
       h+='<div class="gt-node gt-project" data-pname="'+esc(p.name)+'">'
-        +'<div class="gt-row gt-proj-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gantt-name" title="'+esc(p.name)+'">'+esc(p.name)+'</span>'+(p.progress?' <span class="gt-progress-tag" title="进度">'+esc(p.progress)+'</span>':'')+(p.school?'<span class="gantt-school">'+esc(p.school)+'</span>':'')+regionTag(p.region)+(p.status?' <span class="gt-status-dot" style="background:'+GANTT_STATUS_COLOR[p.status]+'"></span>':'')+'</div><div class="gantt-track-col">'+barInner(p)+'</div></div>'
+        +'<div class="gt-row gt-proj-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gantt-name" title="'+esc(p.name)+'">'+esc(p.name)+'</span>'+(p.school?'<span class="gantt-school">'+esc(p.school)+'</span>':'')+regionTag(p.region)+(p.status?' <span class="gt-status-dot" style="background:'+GANTT_STATUS_COLOR[p.status]+'"></span>':'')+'</div><div class="gantt-progress-col">'+(p.progress?esc(p.progress):'')+'</div><div class="gantt-track-col">'+barInner(p)+'</div></div>'
         +'<div class="gt-children" hidden>'+reqHtml(p)+projectChildrenHtml(p,null)+'</div>'
         +'</div>';
     });
@@ -1909,11 +1911,11 @@ function renderGantt(){
       teams.forEach(team=>{
         const ps=teamMap[team];
         h+='<div class="gt-node gt-team-top" data-team="'+esc(team)+'">'
-          +'<div class="gt-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gt-st-name">'+esc(team)+'</span> <span class="gt-cnt">'+ps.length+' 个项目</span></div><div class="gantt-track-col"></div></div>'
+          +'<div class="gt-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gt-st-name">'+esc(team)+'</span> <span class="gt-cnt">'+ps.length+' 个项目</span></div><div class="gantt-progress-col"></div><div class="gantt-track-col"></div></div>'
           +'<div class="gt-children" hidden>';
         ps.forEach(p=>{
           h+='<div class="gt-node gt-project" data-pname="'+esc(p.name)+'">'
-            +'<div class="gt-row gt-proj-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gantt-name" title="'+esc(p.name)+'">'+esc(p.name)+'</span>'+(p.progress?' <span class="gt-progress-tag" title="进度">'+esc(p.progress)+'</span>':'')+(p.school?'<span class="gantt-school">'+esc(p.school)+'</span>':'')+regionTag(p.region)+'</div><div class="gantt-track-col"></div></div>'
+            +'<div class="gt-row gt-proj-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gantt-name" title="'+esc(p.name)+'">'+esc(p.name)+'</span>'+(p.school?'<span class="gantt-school">'+esc(p.school)+'</span>':'')+regionTag(p.region)+'</div><div class="gantt-progress-col">'+(p.progress?esc(p.progress):'')+'</div><div class="gantt-track-col"></div></div>'
             +'<div class="gt-children" hidden>'+projectChildrenHtml(p,team)+'</div>'
             +'</div>';
         });
