@@ -1899,7 +1899,7 @@ function renderGantt(){
   if(ganttSortMode==='project'){
     list.forEach(p=>{
       h+='<div class="gt-node gt-project" data-pname="'+esc(p.name)+'">'
-        +'<div class="gt-row gt-proj-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gantt-name" title="'+esc(p.name)+'">'+esc(p.name)+'</span>'+(p.school?'<span class="gantt-school">'+esc(p.school)+'</span>':'')+regionTag(p.region)+(p.status?' <span class="gt-status-dot" style="background:'+GANTT_STATUS_COLOR[p.status]+'"></span>':'')+'</div><div class="gantt-progress-col">'+(p.progress?esc(p.progress):'')+'</div><div class="gantt-track-col">'+barInner(p)+'</div></div>'
+        +'<div class="gt-row gt-proj-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gantt-name" title="'+esc(p.name)+'">'+esc(p.name)+'</span>'+(p.school?'<span class="gantt-school">'+esc(p.school)+'</span>':'')+(p.status?' <span class="gt-status-dot" style="background:'+GANTT_STATUS_COLOR[p.status]+'"></span>':'')+'</div><div class="gantt-progress-col">'+(p.progress?esc(p.progress):'')+'</div><div class="gantt-track-col">'+barInner(p)+'</div></div>'
         +'<div class="gt-children" hidden>'+reqHtml(p)+projectChildrenHtml(p,null)+'</div>'
         +'</div>';
     });
@@ -1915,7 +1915,7 @@ function renderGantt(){
           +'<div class="gt-children" hidden>';
         ps.forEach(p=>{
           h+='<div class="gt-node gt-project" data-pname="'+esc(p.name)+'">'
-            +'<div class="gt-row gt-proj-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gantt-name" title="'+esc(p.name)+'">'+esc(p.name)+'</span>'+(p.school?'<span class="gantt-school">'+esc(p.school)+'</span>':'')+regionTag(p.region)+'</div><div class="gantt-progress-col">'+(p.progress?esc(p.progress):'')+'</div><div class="gantt-track-col"></div></div>'
+            +'<div class="gt-row gt-proj-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gantt-name" title="'+esc(p.name)+'">'+esc(p.name)+'</span>'+(p.school?'<span class="gantt-school">'+esc(p.school)+'</span>':'')+'</div><div class="gantt-progress-col">'+(p.progress?esc(p.progress):'')+'</div><div class="gantt-track-col"></div></div>'
             +'<div class="gt-children" hidden>'+projectChildrenHtml(p,team)+'</div>'
             +'</div>';
         });
@@ -1926,7 +1926,7 @@ function renderGantt(){
     }
   }
   h+='</div>';
-  h+='<div class="gantt-note">时间块配色：<span style="display:inline-block;width:10px;height:10px;background:#3498db;border-radius:2px;vertical-align:middle"></span> 项目周期（浅色底）＋ <span style="display:inline-block;width:10px;height:10px;background:#16a085;border-radius:2px;vertical-align:middle"></span> 目前时间（深绿，从开始到今天）。「项目排序」：进行中 + 河南 优先（并列加权），点击项目展开 → 「要求数量」类型行（仅显示 V-AC 有值的类型），每行双色条形图 <span style="display:inline-block;width:10px;height:10px;background:rgba(46,204,113,.55);border:1px solid rgba(21,99,48,.85);border-radius:2px;vertical-align:middle"></span> 实际完成(从2026底版聚合，可超出要求) + <span style="display:inline-block;width:10px;height:10px;background:rgba(52,152,219,.55);border:1px solid rgba(41,116,166,.85);border-radius:2px;vertical-align:middle"></span> 要求数量（两色均半透明，重叠区可同时辨识）。要求数量可点击 ✎ 修改（仅本地保存，不回写腾讯文档）。制作情况从「01项目数据录入」动态读取。搜索框支持实时下拉匹配（↑↓选择 / Enter确认 / Esc关闭 / 点击外部收起）。所有项目均显示地区色块标签。共 '+list.length+' 个项目与 '+Y+' 年重叠。</div>';
+  h+='<div class="gantt-note">时间块配色：<span style="display:inline-block;width:10px;height:10px;background:#3498db;border-radius:2px;vertical-align:middle"></span> 项目周期（浅色底）＋ <span style="display:inline-block;width:10px;height:10px;background:#16a085;border-radius:2px;vertical-align:middle"></span> 目前时间（深绿，从开始到今天）。「项目排序」：进行中 + 河南 优先（并列加权），点击项目展开 → 「要求数量」类型行（仅显示 V-AC 有值的类型），每行双色条形图 <span style="display:inline-block;width:10px;height:10px;background:rgba(46,204,113,.55);border:1px solid rgba(21,99,48,.85);border-radius:2px;vertical-align:middle"></span> 实际完成(从2026底版聚合，可超出要求) + <span style="display:inline-block;width:10px;height:10px;background:rgba(52,152,219,.55);border:1px solid rgba(41,116,166,.85);border-radius:2px;vertical-align:middle"></span> 要求数量（两色均半透明，重叠区可同时辨识）。要求数量可点击 ✎ 修改（仅本地保存，不回写腾讯文档）。制作情况从「01项目数据录入」动态读取。搜索框支持实时下拉匹配（↑↓选择 / Enter确认 / Esc关闭 / 点击外部收起）。共 '+list.length+' 个项目与 '+Y+' 年重叠。</div>';
   h+='</div>';
   el.innerHTML=h;
   el.onclick=ganttClickHandler;
