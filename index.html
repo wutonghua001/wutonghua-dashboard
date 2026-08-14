@@ -236,6 +236,20 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .gantt-marker{position:absolute;top:0;width:2px;height:22px;background:#2c3e50;opacity:0.75}
 .gantt-empty{padding:24px;color:#9aa3b2;text-align:center}
 .gantt-note{font-size:12px;color:#aab2c0;margin-top:8px}
+/* ── 各类型剩余数量汇总面板（v10.5） ── */
+.gantt-summary{background:#f8fafc;border:1px solid #e6ecf3;border-radius:8px;padding:10px 12px;margin-bottom:12px;}
+.gs-title{font-size:13px;font-weight:600;color:#34495e;margin-bottom:8px;}
+.gs-grid{display:flex;flex-wrap:wrap;gap:10px;}
+.gs-card{background:#fff;border:1px solid #e3e9f1;border-radius:7px;padding:8px 12px;min-width:118px;flex:1;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+.gs-type{font-size:13px;font-weight:600;color:#2c3e50;margin-bottom:5px;border-bottom:1px dashed #eef1f5;padding-bottom:4px;}
+.gs-line{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin:2px 0;}
+.gs-k{color:#8a93a3;}
+.gs-v{font-weight:700;font-size:13px;}
+.gs-req{color:#2980b9;}
+.gs-act{color:#16a085;}
+.gs-rem{color:#e67e22;}
+.gs-rem-neg{color:#e74c3c;}
+.gs-rem-line{margin-top:4px;padding-top:4px;border-top:1px dashed #eef1f5;}
 .gantt-nd{display:inline-block;margin-left:6px;font-size:11px;color:#b9770e;background:#fef5e7;border:1px solid #f5d99a;border-radius:3px;padding:0 4px;font-weight:600}
 .gantt-dot{position:absolute;top:50%;width:7px;height:7px;border-radius:50%;background:#fff;border:2px solid #2c3e50;transform:translateY(-50%);z-index:3}
 .gantt-dot-start{left:-1px}
@@ -1917,6 +1931,33 @@ function renderGantt(){
   h+='<span class="gantt-legend">';
   GANTT_STATUS_ORDER.forEach(s=>{h+='<span class="gantt-leg" style="background:'+GANTT_STATUS_COLOR[s]+'"></span>'+s;});
   h+='</span></div>';
+  // ═══ 各类型剩余数量汇总（要求数量 − 实际完成数量，按当前年份与搜索范围统计）═══
+  const _reqAll=(typeof GANTT_DATA!=='undefined'&&GANTT_DATA&&GANTT_DATA.req)||{};
+  const _taAll=(typeof GANTT_DATA!=='undefined'&&GANTT_DATA&&GANTT_DATA.types_actual)||{};
+  const gs={}; REQ_LABELS.forEach(nm=>gs[nm]={req:0,act:0});
+  list.forEach(p=>{
+    const pk=normName(p.name);
+    const r=_reqAll[pk]||{}; const a=_taAll[pk]||{};
+    REQ_LABELS.forEach(nm=>{
+      gs[nm].req+=parseFloat(r[nm])||0;
+      gs[nm].act+=parseFloat(a[nm])||0;
+    });
+  });
+  const r1=(x)=>Math.round(x*10)/10;
+  let gsCards='';
+  REQ_LABELS.forEach(nm=>{
+    const s=gs[nm];
+    if(s.req===0 && s.act===0) return; // 跳过无任何数据的类型
+    const rem=r1(s.req-s.act);
+    const remCls=rem<0?'gs-rem-neg':'';
+    const remTxt=rem<0?('超额 '+Math.abs(rem)):rem;
+    gsCards+='<div class="gs-card"><div class="gs-type">'+esc(nm)+'</div>'
+      +'<div class="gs-line"><span class="gs-k">要求</span><span class="gs-v gs-req">'+r1(s.req)+'</span></div>'
+      +'<div class="gs-line"><span class="gs-k">实际</span><span class="gs-v gs-act">'+r1(s.act)+'</span></div>'
+      +'<div class="gs-line gs-rem-line"><span class="gs-k">剩余</span><span class="gs-v gs-rem '+remCls+'">'+remTxt+'</span></div></div>';
+  });
+  const gsHtml=gsCards?('<div class="gantt-summary"><div class="gs-title">各类型剩余数量汇总（要求数量 − 实际完成数量，按当前年份与搜索范围统计，共 '+list.length+' 个项目）</div><div class="gs-grid">'+gsCards+'</div></div>'):'';
+  h+=gsHtml;
   h+='<div class="gantt"><div class="gantt-head"><div class="gantt-label-col">'+(ganttSortMode==='project'?'项目（点击展开团队 / 子任务）':'团队（点击展开项目）')+'</div><div class="gantt-progress-col">进度</div><div class="gantt-track-col"><div class="gantt-axis">'+monthLabels.map(m=>'<span>'+m+'</span>').join('')+'</div></div></div>';
   if(ganttSortMode==='project'){
     list.forEach(p=>{
