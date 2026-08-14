@@ -295,6 +295,22 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .gt-project.gh-normal{box-shadow:inset 3px 0 0 #27ae60}
 .gt-project.gh-warn{box-shadow:inset 3px 0 0 #f39c12}
 .gt-project.gh-delay{box-shadow:inset 3px 0 0 #e74c3c}
+/* 项目余量汇总表（v10.8） */
+.gantt-remainder{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:12px;overflow:hidden}
+.gr-title{font-size:14px;font-weight:600;color:#1e293b;margin-bottom:10px}
+.gr-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.gr-table{width:100%;border-collapse:collapse;font-size:13px;min-width:600px}
+.gr-table thead th{background:#f8fafc;color:#475569;font-weight:600;font-size:12px;padding:7px 10px;text-align:center;border-bottom:2px solid #e2e8f0;white-space:nowrap;position:sticky;top:0;z-index:1}
+.gr-table thead .th-name{text-align:left;padding-left:14px;min-width:220px}
+.gr-table thead .th-total{min-width:60px}
+.gr-table tbody td{padding:6px 10px;border-bottom:1px solid #f1f5f9;text-align:center;white-space:nowrap;color:#334155}
+.gr-table tbody .td-name{text-align:left;padding-left:14px;max-width:280px;overflow:hidden;text-overflow:ellipsis;color:#0f172a;font-weight:500}
+.gr-table tbody tr:hover{background:#f8fafc}
+.gr-table tbody tr.gr-row-gap{background:#fffbeb}
+.gr-pos{color:#dc2626;font-weight:600}       /* 缺口/未完成 — 红色 */
+.gr-neg{color:#16a085;font-weight:600}        /* 超额完成 — 绿色 */
+.gr-zero{color:#94a3b8}                        /* 刚好持平 — 灰色 */
+.td-total{font-weight:700;min-width:60px;border-left:1px solid #e2e8f0}
 .gt-node{}
 .gt-row{display:flex;align-items:stretch;border-bottom:1px solid #f2f4f7;cursor:pointer;}
 .gt-caret{display:inline-flex;align-items:center;justify-content:center;width:18px;min-width:18px;color:#9aa3b2;font-size:11px;transition:transform .15s;}
@@ -1581,6 +1597,7 @@ function monthIdxG(s){ if(!s) return null; const m=s.slice(0,7); const p=m.split
 function ganttNormName(s){return (s||'').replace(/\s+/g,'');}
 // 计算单个项目健康度：延期(delay) / 预警(warn) / 正常(normal)
 // 规则：超要求完成时间且未完成→延期；距截止≤3天未完成 或 达成率<80%→预警；其余正常
+// v10.8 修复：done 只看 actual(实际完成时间) 和完结类 status，不再用 rate>=1 代替（数量达标≠项目收尾）
 function ganttHealth(p){
   const reqAll=(typeof GANTT_DATA!=='undefined'&&GANTT_DATA&&GANTT_DATA.req)||{};
   const taAll=(typeof GANTT_DATA!=='undefined'&&GANTT_DATA&&GANTT_DATA.types_actual)||{};
@@ -1594,8 +1611,10 @@ function ganttHealth(p){
   const today=new Date(TODAY);
   const end=p.end?new Date(p.end):null;
   const daysToEnd = end? Math.ceil((end-today)/86400000) : null; // ≥0 未来，<0 已逾期
-  const delayDays = (daysToEnd!=null && daysToEnd<0)? -daysToEnd : null;
-  const done = (p.actual!=null && p.actual!=='') || (rate!=null && rate>=1);
+  const delayDays = (daysToEnd!=null && daysToEnd<0)? -daysDays : null;
+  // v10.8 done 判定收紧：仅 actual 有值 或 status 为完结类 才算真正完成
+  const doneStatuses=['已完结','100.00%','完结'];
+  const done = (p.actual!=null && p.actual!=='') || doneStatuses.includes((p.status||'').trim());
   let level='normal';
   if(end && today>end && !done) level='delay';
   else if((daysToEnd!=null && daysToEnd>=0 && daysToEnd<=3 && !done) || (rate!=null && rate<0.8)) level='warn';
@@ -1618,6 +1637,57 @@ function ganttHealthBadge(h){
   }
   const cls=h.level==='delay'?'gh-delay':(h.level==='warn'?'gh-warn':'gh-normal');
   return '<span class="gh-badge '+cls+'">'+txt+'</span>';
+}
+// ============ 项目余量汇总表（v10.8，要求数量 - 实际完成数量）============
+// 列映射：视频=课程视频，动画=二维动画，交互=交互，虚拟仿真=虚拟仿真
+const REMAINDER_COLS=[
+  {key:'课程视频',label:'视频'},
+  {key:'二维动画',label:'动画'},
+  {key:'交互',label:'交互'},
+  {key:'虚拟仿真',label:'虚拟仿真'}
+];
+function buildRemainderTable(projectList){
+  const reqAll=(typeof GANTT_DATA!=='undefined'&&GANTT_DATA&&GANTT_DATA.req)||{};
+  const taAll=(typeof GANTT_DATA!=='undefined'&&GANTT_DATA&&GANTT_DATA.types_actual)||{};
+  // 只展示有要求数据的项目，且余量不全为0
+  const rows=[];
+  projectList.forEach(p=>{
+    const norm=ganttNormName(p.name);
+    const r=reqAll[norm]||{};
+    const a=taAll[norm]||{};
+    let hasData=false,totalRemain=0;
+    const cells=REMAINDER_COLS.map(col=>{
+      const reqVal=parseFloat(r[col.key])||0;
+      const actVal=parseFloat(a[col.key])||0;
+      const remain=reqVal-actVal;
+      if(reqVal>0) hasData=true;
+      totalRemain+=remain;
+      return {remain,reqVal,actVal,label:col.label};
+    });
+    if(hasData){ rows.push({p,cells,totalRemain}); }
+  });
+  if(!rows.length) return '';
+  // 按余量合计降序（缺最多的排前面）
+  rows.sort((a,b)=>b.totalRemain-a.totalRemain);
+  let h='<div class="gantt-remainder"><div class="gr-title">📋 项目余量（要求数 - 实际完成数）</div><div class="gr-table-wrap"><table class="gr-table"><thead><tr><th class="th-name">项目名称</th>';
+  REMAINDER_COLS.forEach(c=>{ h+='<th>'+c.label+'</th>'; });
+  h+='<th class="th-total">合计</th></tr></thead><tbody>';
+  rows.forEach(row=>{
+    const p=row.p;
+    h+='<tr'+(row.totalRemain>0?' class="gr-row-gap"':'')+'><td class="td-name" title="'+esc(p.name)+'">'+esc(p.name)+'</td>';
+    let total=0;
+    row.cells.forEach(cell=>{
+      total+=cell.remain;
+      const v=cell.remain===0?'—':cell.remain.toFixed(cell.remain%1===0?0:1).replace(/\.0$/,'');
+      const cls=cell.remain>0?'gr-pos':(cell.remain<0?'gr-neg':'gr-zero');
+      h+='<td class="'+cls+'">'+v+'</td>';
+    });
+    const tv=total===0?'—':total.toFixed(total%1===0?0:1).replace(/\.0$/,'');
+    const tcls=total>0?'gr-pos':(total<0?'gr-neg':'gr-zero');
+    h+='<td class="td-total '+tcls+'">'+tv+'</td></tr>';
+  });
+  h+='</tbody></table></div></div>';
+  return h;
 }
 // ============ 甘特图搜索下拉（实时筛选 + 防抖 + 键盘导航 + 去重 + 点击外部关闭）============
 let ganttSearchTimer=null;
@@ -2041,6 +2111,7 @@ function renderGantt(){
   GANTT_STATUS_ORDER.forEach(s=>{h+='<span class="gantt-leg" style="background:'+GANTT_STATUS_COLOR[s]+'"></span>'+s;});
   h+='</span></div>';
   h+=sumHtml+focusHtml;
+  h+=buildRemainderTable(list);  // v10.8 项目余量汇总表
   h+='<div class="gantt"><div class="gantt-head"><div class="gantt-label-col">'+(ganttSortMode==='project'?'项目（点击展开团队 / 子任务）':'团队（点击展开项目）')+'</div><div class="gantt-progress-col">进度</div><div class="gantt-track-col"><div class="gantt-axis">'+monthLabels.map(m=>'<span>'+m+'</span>').join('')+'</div></div></div>';
   if(ganttSortMode==='project'){
     dispList.forEach(p=>{
