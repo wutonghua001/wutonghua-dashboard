@@ -1611,7 +1611,7 @@ function ganttHealth(p){
   const today=new Date(TODAY);
   const end=p.end?new Date(p.end):null;
   const daysToEnd = end? Math.ceil((end-today)/86400000) : null; // ≥0 未来，<0 已逾期
-  const delayDays = (daysToEnd!=null && daysToEnd<0)? -daysDays : null;
+  const delayDays = (daysToEnd!=null && daysToEnd<0)? -daysToEnd : null;
   // v10.8 done 判定收紧：仅 actual 有值 或 status 为完结类 才算真正完成
   const doneStatuses=['已完结','100.00%','完结'];
   const done = (p.actual!=null && p.actual!=='') || doneStatuses.includes((p.status||'').trim());
