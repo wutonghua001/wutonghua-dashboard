@@ -257,6 +257,44 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .gantt-sort-btn{border:1px solid #dde3ec;background:#fff;color:#5a6b80;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:14px;margin-left:6px;}
 .gantt-sort-btn:hover{background:#f0f4fa;}
 .gantt-sort-btn.active{background:#3498db;border-color:#3498db;color:#fff;font-weight:600;}
+/* ── 项目健康度（v10.7）── */
+.gantt-filter{display:inline-flex;gap:4px;margin-left:8px}
+.gantt-filter-btn{border:1px solid #dde3ec;background:#fff;color:#5a6b80;border-radius:6px;padding:4px 11px;cursor:pointer;font-size:13px}
+.gantt-filter-btn:hover{background:#f0f4fa}
+.gantt-filter-btn.active{font-weight:600}
+.gantt-filter-btn[data-f="normal"].active{background:#27ae60;border-color:#27ae60;color:#fff}
+.gantt-filter-btn[data-f="warn"].active{background:#f39c12;border-color:#f39c12;color:#fff}
+.gantt-filter-btn[data-f="delay"].active{background:#e74c3c;border-color:#e74c3c;color:#fff}
+/* 健康度汇总卡 */
+.gantt-health-summary{background:#f8fafc;border:1px solid #e6ecf3;border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.ghs-title{font-size:13px;font-weight:600;color:#34495e;margin-bottom:8px}
+.ghs-cards{display:flex;gap:10px;flex-wrap:wrap}
+.ghs-card{flex:1;min-width:110px;border-radius:7px;padding:8px 12px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.ghs-num{font-size:22px;font-weight:800;line-height:1.1}
+.ghs-lab{font-size:12px;margin-top:2px}
+.ghs-normal{background:#eafaf1;border:1px solid #bfe9d0}.ghs-normal .ghs-num{color:#27ae60}.ghs-normal .ghs-lab{color:#1e8449}
+.ghs-warn{background:#fef5e7;border:1px solid #f7dcae}.ghs-warn .ghs-num{color:#f39c12}.ghs-warn .ghs-lab{color:#b9770e}
+.ghs-delay{background:#fdedec;border:1px solid #f5b7b1}.ghs-delay .ghs-num{color:#e74c3c}.ghs-delay .ghs-lab{color:#c0392b}
+/* 本周重点关注清单 */
+.gantt-focus{background:#fff;border:1px solid #f1d4d0;border-left:4px solid #e74c3c;border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.gf-title{font-size:13px;font-weight:600;color:#c0392b;margin-bottom:8px}
+.gf-list{display:flex;flex-direction:column;gap:5px}
+.gf-item{display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 6px;border-radius:5px;cursor:pointer;transition:background .12s}
+.gf-item:hover{background:#fdecea}
+.gf-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.gf-dot.gf-normal{background:#27ae60}.gf-dot.gf-warn{background:#f39c12}.gf-dot.gf-delay{background:#e74c3c}
+.gf-name{flex:1;color:#2c3e50;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gf-name:hover{text-decoration:underline}
+.gf-reason{font-size:12px;font-weight:600;flex-shrink:0}
+.gf-reason.gf-normal{color:#27ae60}.gf-reason.gf-warn{color:#f39c12}.gf-reason.gf-delay{color:#e74c3c}
+/* 项目行健康度徽标 + 左边框 */
+.gh-badge{display:inline-block;font-size:11px;font-weight:600;border-radius:3px;padding:1px 6px;margin-left:5px;vertical-align:middle;white-space:nowrap}
+.gh-badge.gh-normal{color:#1e8449;background:#eafaf1;border:1px solid #bfe9d0}
+.gh-badge.gh-warn{color:#b9770e;background:#fef5e7;border:1px solid #f7dcae}
+.gh-badge.gh-delay{color:#c0392b;background:#fdedec;border:1px solid #f5b7b1}
+.gt-project.gh-normal{box-shadow:inset 3px 0 0 #27ae60}
+.gt-project.gh-warn{box-shadow:inset 3px 0 0 #f39c12}
+.gt-project.gh-delay{box-shadow:inset 3px 0 0 #e74c3c}
 .gt-node{}
 .gt-row{display:flex;align-items:stretch;border-bottom:1px solid #f2f4f7;cursor:pointer;}
 .gt-caret{display:inline-flex;align-items:center;justify-content:center;width:18px;min-width:18px;color:#9aa3b2;font-size:11px;transition:transform .15s;}
@@ -1482,6 +1520,7 @@ let ganttYear='2026';
 let ganttSortMode='project'; // 'project' | 'team'
 let ganttSearchText=''; // 项目搜索关键词
 let ganttSearchConfirmed=false; // 用户是否已从下拉确认选择（确认后仅显示匹配项）
+let ganttHealthFilter='all'; // 健康度筛选：all / normal / warn / delay（v10.7 项目健康度）
 // 要求数量仅本地编辑（不自动回写腾讯文档）
 const GANTT_STATUS_ORDER=['进行中','待开展','停滞'];
 const GANTT_STATUS_COLOR={'进行中':'#3498db','待开展':'#f39c12','停滞':'#e74c3c'};
@@ -1538,6 +1577,48 @@ function exportForSync(){
   document.body.removeChild(ta);
 }
 function monthIdxG(s){ if(!s) return null; const m=s.slice(0,7); const p=m.split('-'); if(p.length<2) return null; return parseInt(p[0])*12+(parseInt(p[1])-1); }
+// ============ 项目健康度（v10.7，对应进度跟踪系统「看板1/规则1」）============
+function ganttNormName(s){return (s||'').replace(/\s+/g,'');}
+// 计算单个项目健康度：延期(delay) / 预警(warn) / 正常(normal)
+// 规则：超要求完成时间且未完成→延期；距截止≤3天未完成 或 达成率<80%→预警；其余正常
+function ganttHealth(p){
+  const reqAll=(typeof GANTT_DATA!=='undefined'&&GANTT_DATA&&GANTT_DATA.req)||{};
+  const taAll=(typeof GANTT_DATA!=='undefined'&&GANTT_DATA&&GANTT_DATA.types_actual)||{};
+  const r=reqAll[ganttNormName(p.name)]||{};
+  const a=taAll[ganttNormName(p.name)]||{};
+  let reqSum=0,actSum=0;
+  REQ_LABELS.forEach(nm=>{ reqSum+=parseFloat(r[nm])||0; actSum+=parseFloat(a[nm])||0; });
+  let rate=null, src='';
+  if(reqSum>0){ rate=actSum/reqSum; src='req'; }                 // 系统达成率（要求/实际）
+  else { const pr=parseFloat(String(p.progress||'').replace('%','')); if(!isNaN(pr)){ rate=pr/100; src='progress'; } } // 无要求数量时回退人工进度
+  const today=new Date(TODAY);
+  const end=p.end?new Date(p.end):null;
+  const daysToEnd = end? Math.ceil((end-today)/86400000) : null; // ≥0 未来，<0 已逾期
+  const delayDays = (daysToEnd!=null && daysToEnd<0)? -daysToEnd : null;
+  const done = (p.actual!=null && p.actual!=='') || (rate!=null && rate>=1);
+  let level='normal';
+  if(end && today>end && !done) level='delay';
+  else if((daysToEnd!=null && daysToEnd>=0 && daysToEnd<=3 && !done) || (rate!=null && rate<0.8)) level='warn';
+  return {level, delayDays, daysToEnd, rate, src, reqSum, actSum};
+}
+// 关注清单点击：定位并展开指定项目
+function ganttFocus(name){
+  const nodes=document.querySelectorAll('.gt-project[data-pname]');
+  for(const n of nodes){ if(n.dataset.pname===name){ n.scrollIntoView({behavior:'smooth',block:'center'}); const kids=n.querySelector(':scope > .gt-children'); if(kids){ n.classList.add('open'); kids.hidden=false; } break; } }
+}
+// 健康度徽标 HTML
+function ganttHealthBadge(h){
+  if(!h) return '';
+  let txt='正常';
+  if(h.level==='delay') txt='延期'+(h.delayDays!=null?(' '+h.delayDays+'天'):'');
+  else if(h.level==='warn'){
+    if(h.daysToEnd!=null && h.daysToEnd>=0 && h.daysToEnd<=3) txt='距截止 '+h.daysToEnd+'天';
+    else if(h.rate!=null) txt='达成率 '+Math.round(h.rate*100)+'%';
+    else txt='预警';
+  }
+  const cls=h.level==='delay'?'gh-delay':(h.level==='warn'?'gh-warn':'gh-normal');
+  return '<span class="gh-badge '+cls+'">'+txt+'</span>';
+}
 // ============ 甘特图搜索下拉（实时筛选 + 防抖 + 键盘导航 + 去重 + 点击外部关闭）============
 let ganttSearchTimer=null;
 let ganttDDOpen=false;
@@ -1688,6 +1769,36 @@ function renderGantt(){
     }
   } else {
     ganttSearchConfirmed=false; // 搜索清空时重置确认状态
+  }
+  // ═══ 项目健康度计算（v10.7，对应进度跟踪系统「看板1 / 规则1」）═══
+  const healthMap={};
+  list.forEach(p=>{ healthMap[ganttNormName(p.name)]=ganttHealth(p); });
+  const hCounts={normal:0,warn:0,delay:0};
+  list.forEach(p=>{ hCounts[healthMap[ganttNormName(p.name)].level]++; });
+  // 本周重点关注清单：延期优先，其次预警（临近截止 / 达成率低），Top 8
+  const focusList=[...list].map(p=>({p,h:healthMap[ganttNormName(p.name)]}))
+    .filter(x=>x.h.level!=='normal')
+    .sort((a,b)=> (a.h.level==='delay'?0:1)-(b.h.level==='delay'?0:1) || (b.h.delayDays||0)-(a.h.delayDays||0))
+    .slice(0,8);
+  // 健康度筛选（不影响上方汇总卡与关注清单的全局统计）
+  const dispList = (ganttHealthFilter && ganttHealthFilter!=='all') ? list.filter(p=>healthMap[ganttNormName(p.name)].level===ganttHealthFilter) : list;
+  // 汇总卡 HTML
+  const sumHtml='<div class="gantt-health-summary"><div class="ghs-title">项目整体健康度（'+list.length+' 个，'+Y+' 年）</div><div class="ghs-cards">'
+    +'<div class="ghs-card ghs-normal"><div class="ghs-num">'+hCounts.normal+'</div><div class="ghs-lab">正常</div></div>'
+    +'<div class="ghs-card ghs-warn"><div class="ghs-num">'+hCounts.warn+'</div><div class="ghs-lab">预警</div></div>'
+    +'<div class="ghs-card ghs-delay"><div class="ghs-num">'+hCounts.delay+'</div><div class="ghs-lab">延期</div></div>'
+    +'</div></div>';
+  // 关注清单 HTML
+  let focusHtml='';
+  if(focusList.length){
+    focusHtml='<div class="gantt-focus"><div class="gf-title">⚠ 本周重点关注（即将到期 / 已延期 / 高风险，Top '+focusList.length+'）</div><div class="gf-list">';
+    focusList.forEach(x=>{
+      const p=x.p,h=x.h;
+      let reason = h.level==='delay' ? ('延期 '+h.delayDays+'天') : (h.daysToEnd!=null && h.daysToEnd>=0 && h.daysToEnd<=3 ? ('距截止 '+h.daysToEnd+'天') : ('达成率 '+Math.round((h.rate||0)*100)+'%'));
+      const cls=h.level==='delay'?'gf-delay':(h.level==='warn'?'gf-warn':'gf-normal');
+      focusHtml+='<div class="gf-item" onclick="ganttFocus(\''+esc(p.name)+'\')" title="点击定位并展开该项目"><span class="gf-dot '+cls+'"></span><span class="gf-name">'+esc(p.name)+'</span><span class="gf-reason '+cls+'">'+reason+'</span></div>';
+    });
+    focusHtml+='</div></div>';
   }
   function barInner(p){
     const sIdx=monthIdxG(p.start);
@@ -1922,21 +2033,27 @@ function renderGantt(){
   h+='<div class="gantt-toolbar"><label>年份：</label><select onchange="ganttYear=this.value;renderGantt()">'+years.map(y=>'<option value="'+y+'"'+(y===Y?' selected':'')+'>'+y+'年</option>').join('')+'</select>';
   h+=' <button class="gantt-sort-btn '+(ganttSortMode==='project'?'active':'')+'" onclick="ganttSortMode=\'project\';renderGantt()">项目排序</button>';
   h+=' <button class="gantt-sort-btn '+(ganttSortMode==='team'?'active':'')+'" onclick="ganttSortMode=\'team\';renderGantt()">团队排序</button>';
+  h+=' <span class="gantt-filter">';
+  ['all','normal','warn','delay'].forEach(f=>{ h+='<button class="gantt-filter-btn '+(ganttHealthFilter===f?'active':'')+'" data-f="'+f+'" onclick="ganttHealthFilter=\''+f+'\';renderGantt()">'+({all:'全部',normal:'正常',warn:'预警',delay:'延期'}[f])+'</button>'; });
+  h+='</span>';
  h+=' <div class="gantt-search-wrap"><input id="ganttSearchInput" type="text" class="gantt-search-input" placeholder="🔍 搜索项目（名称/学校/地区）" value="'+esc(ganttSearchText)+'" oninput="ganttSearchInput(this)" onkeydown="ganttDDKey(event)" onfocus="ganttDDOpenDropdown(this.value)" autocomplete="off" title="输入关键词实时下拉匹配项目；↑↓选择，Enter确认，Esc关闭"></div>';
   h+='<span class="gantt-legend">';
   GANTT_STATUS_ORDER.forEach(s=>{h+='<span class="gantt-leg" style="background:'+GANTT_STATUS_COLOR[s]+'"></span>'+s;});
   h+='</span></div>';
+  h+=sumHtml+focusHtml;
   h+='<div class="gantt"><div class="gantt-head"><div class="gantt-label-col">'+(ganttSortMode==='project'?'项目（点击展开团队 / 子任务）':'团队（点击展开项目）')+'</div><div class="gantt-progress-col">进度</div><div class="gantt-track-col"><div class="gantt-axis">'+monthLabels.map(m=>'<span>'+m+'</span>').join('')+'</div></div></div>';
   if(ganttSortMode==='project'){
-    list.forEach(p=>{
-      h+='<div class="gt-node gt-project" data-pname="'+esc(p.name)+'">'
-        +'<div class="gt-row gt-proj-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gantt-name" title="'+esc(p.name)+'">'+esc(p.name)+'</span>'+(p.school?'<span class="gantt-school">'+esc(p.school)+'</span>':'')+(p.status?' <span class="gt-status-dot" style="background:'+GANTT_STATUS_COLOR[p.status]+'"></span>':'')+'</div><div class="gantt-progress-col">'+(p.progress?esc(p.progress):'')+'</div><div class="gantt-track-col">'+barInner(p)+'</div></div>'
+    dispList.forEach(p=>{
+      const hInfo=healthMap[ganttNormName(p.name)]||null;
+      const hl=hInfo?hInfo.level:'normal';
+      h+='<div class="gt-node gt-project gh-'+hl+'" data-pname="'+esc(p.name)+'">'
+        +'<div class="gt-row gt-proj-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gantt-name" title="'+esc(p.name)+'">'+esc(p.name)+'</span>'+(p.school?'<span class="gantt-school">'+esc(p.school)+'</span>':'')+(p.status?' <span class="gt-status-dot" style="background:'+GANTT_STATUS_COLOR[p.status]+'"></span>':'')+ganttHealthBadge(hInfo)+'</div><div class="gantt-progress-col">'+(p.progress?esc(p.progress):'')+'</div><div class="gantt-track-col">'+barInner(p)+'</div></div>'
         +'<div class="gt-children" hidden>'+reqHtml(p)+projectChildrenHtml(p,null)+'</div>'
         +'</div>';
     });
   } else {
     const teamMap={};
-    list.forEach(p=>{ const wt=wbs[normName(p.name)]||{}; Object.keys(wt).forEach(t=>{ (teamMap[t]=teamMap[t]||[]).push(p); }); });
+    dispList.forEach(p=>{ const wt=wbs[normName(p.name)]||{}; Object.keys(wt).forEach(t=>{ (teamMap[t]=teamMap[t]||[]).push(p); }); });
     const teams=Object.keys(teamMap).sort();
     if(teams.length){
       teams.forEach(team=>{
@@ -1945,8 +2062,10 @@ function renderGantt(){
           +'<div class="gt-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gt-st-name">'+esc(team)+'</span> <span class="gt-cnt">'+ps.length+' 个项目</span></div><div class="gantt-progress-col"></div><div class="gantt-track-col"></div></div>'
           +'<div class="gt-children" hidden>';
         ps.forEach(p=>{
-          h+='<div class="gt-node gt-project" data-pname="'+esc(p.name)+'">'
-            +'<div class="gt-row gt-proj-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gantt-name" title="'+esc(p.name)+'">'+esc(p.name)+'</span>'+(p.school?'<span class="gantt-school">'+esc(p.school)+'</span>':'')+'</div><div class="gantt-progress-col">'+(p.progress?esc(p.progress):'')+'</div><div class="gantt-track-col"></div></div>'
+          const hInfo=healthMap[ganttNormName(p.name)]||null;
+          const hl=hInfo?hInfo.level:'normal';
+          h+='<div class="gt-node gt-project gh-'+hl+'" data-pname="'+esc(p.name)+'">'
+            +'<div class="gt-row gt-proj-row gt-toggle"><span class="gt-caret">▶</span><div class="gantt-label-col"><span class="gantt-name" title="'+esc(p.name)+'">'+esc(p.name)+'</span>'+(p.school?'<span class="gantt-school">'+esc(p.school)+'</span>':'')+ganttHealthBadge(hInfo)+'</div><div class="gantt-progress-col">'+(p.progress?esc(p.progress):'')+'</div><div class="gantt-track-col"></div></div>'
             +'<div class="gt-children" hidden>'+projectChildrenHtml(p,team)+'</div>'
             +'</div>';
         });
@@ -1957,7 +2076,7 @@ function renderGantt(){
     }
   }
   h+='</div>';
-  h+='<div class="gantt-note">时间块配色：<span style="display:inline-block;width:10px;height:10px;background:#3498db;border-radius:2px;vertical-align:middle"></span> 项目周期（浅色底）＋ <span style="display:inline-block;width:10px;height:10px;background:#16a085;border-radius:2px;vertical-align:middle"></span> 目前时间（深绿，从开始到今天）。「项目排序」：进行中 + 河南 优先（并列加权），点击项目展开 → 「要求数量」类型行（仅显示 V-AC 有值的类型），每行双色条形图 <span style="display:inline-block;width:10px;height:10px;background:rgba(46,204,113,.55);border:1px solid rgba(21,99,48,.85);border-radius:2px;vertical-align:middle"></span> 实际完成(从2026底版聚合，可超出要求) + <span style="display:inline-block;width:10px;height:10px;background:rgba(52,152,219,.55);border:1px solid rgba(41,116,166,.85);border-radius:2px;vertical-align:middle"></span> 要求数量（两色均半透明，重叠区可同时辨识）。要求数量可点击 ✎ 修改（仅本地保存，不回写腾讯文档）。制作情况从「01项目数据录入」动态读取。搜索框支持实时下拉匹配（↑↓选择 / Enter确认 / Esc关闭 / 点击外部收起）。共 '+list.length+' 个项目与 '+Y+' 年重叠。</div>';
+  h+='<div class="gantt-note">时间块配色：<span style="display:inline-block;width:10px;height:10px;background:#3498db;border-radius:2px;vertical-align:middle"></span> 项目周期（浅色底）＋ <span style="display:inline-block;width:10px;height:10px;background:#16a085;border-radius:2px;vertical-align:middle"></span> 目前时间（深绿，从开始到今天）。健康度：<span style="display:inline-block;width:10px;height:10px;background:#27ae60;border-radius:2px;vertical-align:middle"></span>正常 <span style="display:inline-block;width:10px;height:10px;background:#f39c12;border-radius:2px;vertical-align:middle"></span>预警(距截止≤3天或达成率<80%) <span style="display:inline-block;width:10px;height:10px;background:#e74c3c;border-radius:2px;vertical-align:middle"></span>延期(超期未完成)。「项目排序」：进行中 + 河南 优先（并列加权），点击项目展开 → 「要求数量」类型行（仅显示 V-AC 有值的类型），每行双色条形图 <span style="display:inline-block;width:10px;height:10px;background:rgba(46,204,113,.55);border:1px solid rgba(21,99,48,.85);border-radius:2px;vertical-align:middle"></span> 实际完成(从2026底版+全量底版聚合，可超出要求) + <span style="display:inline-block;width:10px;height:10px;background:rgba(52,152,219,.55);border:1px solid rgba(41,116,166,.85);border-radius:2px;vertical-align:middle"></span> 要求数量（两色均半透明，重叠区可同时辨识）。要求数量可点击 ✎ 修改（仅本地保存，不回写腾讯文档）。制作情况从「01项目数据录入」动态读取。搜索框支持实时下拉匹配（↑↓选择 / Enter确认 / Esc关闭 / 点击外部收起）。共 '+dispList.length+' 个项目'+(ganttHealthFilter!=='all'?'（已筛选：'+({normal:'正常',warn:'预警',delay:'延期'}[ganttHealthFilter])+'）':'')+' 与 '+Y+' 年重叠。</div>';
   h+='</div>';
   el.innerHTML=h;
   el.onclick=ganttClickHandler;
