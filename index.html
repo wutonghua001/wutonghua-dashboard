@@ -1608,6 +1608,8 @@ function exportForSync(){
 function monthIdxG(s){ if(!s) return null; const m=s.slice(0,7); const p=m.split('-'); if(p.length<2) return null; return parseInt(p[0])*12+(parseInt(p[1])-1); }
 // ============ 项目健康度（v10.7，对应进度跟踪系统「看板1/规则1」）============
 function ganttNormName(s){return (s||'').replace(/\s+/g,'');}
+// 生成安全的 DOM 元素 id（全局，供 buildRemainderTable 等独立函数使用）
+function gtId(s){return (s||'').replace(/[^一-龥A-Za-z0-9]/g,'_');}
 // 计算单个项目健康度：延期(delay) / 预警(warn) / 正常(normal)
 // 规则：超要求完成时间且未完成→延期；距截止≤3天未完成 或 达成率<80%→预警；其余正常
 // v10.8 修复：done 只看 actual(实际完成时间) 和完结类 status，不再用 rate>=1 代替（数量达标≠项目收尾）
