@@ -296,26 +296,34 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .gt-project.gh-warn{box-shadow:inset 3px 0 0 #f39c12}
 .gt-project.gh-delay{box-shadow:inset 3px 0 0 #e74c3c}
 /* 项目余量汇总表（v10.8） */
-.gantt-remainder{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:12px;overflow:hidden}
-.gr-title{font-size:14px;font-weight:600;color:#1e293b;margin-bottom:10px}
+.gantt-remainder{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 6px;margin-bottom:12px;overflow:hidden}
+.gr-title{font-size:14px;font-weight:600;color:#1e293b;margin-bottom:8px}
 .gr-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.gr-table{width:100%;border-collapse:collapse;font-size:13px;min-width:600px}
-.gr-table thead th{background:#f8fafc;color:#475569;font-weight:600;font-size:12px;padding:7px 10px;text-align:center;border-bottom:2px solid #e2e8f0;white-space:nowrap;position:sticky;top:0;z-index:1}
-.gr-table thead .th-name{text-align:left;padding-left:14px;min-width:220px}
-.gr-table thead .th-total{min-width:60px}
-.gr-table tbody td{padding:6px 10px;border-bottom:1px solid #f1f5f9;text-align:center;white-space:nowrap;color:#334155}
-.gr-table tbody .td-name{text-align:left;padding-left:14px;max-width:280px;overflow:hidden;text-overflow:ellipsis;color:#0f172a;font-weight:500}
+.gr-table{width:100%;border-collapse:collapse;font-size:13px;min-width:900px}
+.gr-table thead th{background:#f8fafc;color:#475569;font-weight:600;font-size:12px;padding:6px 8px;text-align:center;border-bottom:2px solid #e2e8f0;white-space:nowrap;position:sticky;top:0;z-index:1}
+.gr-table thead .th-name{text-align:left;padding-left:10px;min-width:200px;max-width:260px}
+.gr-table thead .th-total{min-width:56px}
+.gr-table tbody td{padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:center;white-space:nowrap;color:#334155}
+.gr-table tbody .td-name{text-align:left;padding-left:10px;max-width:260px;overflow:hidden;text-overflow:ellipsis;color:#0f172a;font-weight:500}
 .gr-table tbody tr:hover{background:#f8fafc}
 .gr-table tbody tr.gr-row-gap{background:#fffbeb}
+.gr-table tbody tr.gr-total-row{background:#f1f5f9;font-weight:700;border-top:2px solid #cbd5e1}
 .gr-pos{color:#dc2626;font-weight:600}       /* 缺口/未完成 — 红色 */
 .gr-neg{color:#16a085;font-weight:600}        /* 超额完成 — 绿色 */
 .gr-zero{color:#94a3b8}                        /* 刚好持平 — 灰色 */
-.td-total{font-weight:700;min-width:60px;border-left:1px solid #e2e8f0}
-.td-deadline{color:#64748b;font-size:12px;white-space:nowrap;min-width:100px}
-.td-team{color:#475569;font-size:12px;white-space:nowrap;min-width:90px}
-.th-deadline{min-width:100px}
-.th-team{min-width:90px}
+.td-total{font-weight:700;min-width:56px;border-left:1px solid #e2e8f0}
+.td-deadline{color:#64748b;font-size:12px;white-space:nowrap;min-width:90px}
+.td-team{color:#475569;font-size:12px;white-space:nowrap;min-width:80px}
+.td-prod{color:#e67e22;font-size:11.5px;white-space:normal;max-width:160px;line-height:1.3}
+.th-deadline{min-width:90px}
+.th-team{min-width:80px}
+.th-prod{min-width:140px}
 .gr-sub{display:block;font-size:10px;color:#94a3b8;font-weight:400;margin-top:1px}
+.gr-total-val{color:#1e293b}
+.gr-group-header td{background:#f8fafc;padding:5px 8px !important;border-bottom:1px solid #e2e8f0}
+.gh-delay-tag{background:#fef2f2;color:#dc2626;padding:2px 10px;border-radius:4px;font-size:12px;font-weight:600;display:inline-block}
+.gh-warn-tag{background:#fffbeb;color:#d97706;padding:2px 10px;border-radius:4px;font-size:12px;font-weight:600;display:inline-block}
+.gh-normal-tag{background:#f0fdf4;color:#16a34a;padding:2px 10px;border-radius:4px;font-size:12px;font-weight:600;display:inline-block}
 .gt-node{}
 .gt-row{display:flex;align-items:stretch;border-bottom:1px solid #f2f4f7;cursor:pointer;}
 .gt-caret{display:inline-flex;align-items:center;justify-content:center;width:18px;min-width:18px;color:#9aa3b2;font-size:11px;transition:transform .15s;}
@@ -1643,7 +1651,7 @@ function ganttHealthBadge(h){
   const cls=h.level==='delay'?'gh-delay':(h.level==='warn'?'gh-warn':'gh-normal');
   return '<span class="gh-badge '+cls+'">'+txt+'</span>';
 }
-// ============ 项目余量汇总表（v10.9，要求数量 - 实际完成数量 + 截止时间 + 负责团队 + 分项合计）============
+// ============ 项目余量汇总表（v10.10，要求数量 - 实际完成数量 + 截止时间 + 负责团队 + 制作情况 + 类型合计行）============
 // 列映射：视频=课程视频，动画=二维动画，交互=交互，虚拟仿真=虚拟仿真
 const REMAINDER_COLS=[
   {key:'课程视频',label:'视频'},
@@ -1672,35 +1680,103 @@ function buildRemainderTable(projectList){
     if(hasData){ rows.push({p,cells,totalRemain}); }
   });
   if(!rows.length) return '';
-  // 按余量合计降序（缺最多的排前面）
-  rows.sort((a,b)=>b.totalRemain-a.totalRemain);
-  let h='<div class="gantt-remainder"><div class="gr-title">📋 项目余量（要求数 - 实际完成数）</div><div class="gr-table-wrap"><table class="gr-table"><thead><tr><th class="th-name">项目名称</th>';
-  REMAINDER_COLS.forEach(c=>{ h+='<th>'+c.label+'</th>'; });
-  h+='<th class="th-total">合计</th><th class="th-deadline">截止时间</th><th class="th-team">负责团队</th></tr></thead><tbody>';
-  rows.forEach(row=>{
-    const p=row.p;
-    h+='<tr'+(row.totalRemain>0?' class="gr-row-gap"':'')+'><td class="td-name" title="'+esc(p.name)+'">'+esc(p.name)+'</td>';
-    let total=0;
-    row.cells.forEach(cell=>{
-      total+=cell.remain;
-      const v=cell.remain===0?'—':cell.remain.toFixed(cell.remain%1===0?0:1).replace(/\.0$/,'');
-      const cls=cell.remain>0?'gr-pos':(cell.remain<0?'gr-neg':'gr-zero');
-      // 分项合计：要求数 / 实际完成数
-      const sub=(cell.reqVal>0)?'<span class="gr-sub">('+cell.reqVal+'/'+cell.actVal.toFixed(1).replace(/\.0$/,'')+')</span>':'';
-      h+='<td class="'+cls+'">'+v+sub+'</td>';
-    });
-    const tv=total===0?'—':total.toFixed(total%1===0?0:1).replace(/\.0$/,'');
-    const tcls=total>0?'gr-pos':(total<0?'gr-neg':'gr-zero');
-    // 截止时间取 p.end，负责团队取 p.resp_team
-    const deadline=p.end?p.end:'—';
-    const team=p.resp_team?esc(p.resp_team):'—';
-    h+='<td class="td-total '+tcls+'">'+tv+'</td>';
-    h+='<td class="td-deadline">'+deadline+'</td>';
-    h+='<td class="td-team">'+team+'</td>';
-    h+='</tr>';
+  // v10.10：按截止时间升序排列（无截止时间的排最后）
+  rows.sort((a,b)=>{
+    if(!a.p.end && !b.p.end) return 0;
+    if(!a.p.end) return 1;
+    if(!b.p.end) return -1;
+    return a.p.end.localeCompare(b.p.end);
   });
+  // 计算健康度（用于状态分组跳转）
+  const healthMap={};
+  rows.forEach(row=>{ healthMap[ganttNormName(row.p.name)]=ganttHealth(row.p); });
+  let h='<div class="gantt-remainder" id="gr-table-wrap"><div class="gr-title">📋 项目余量（要求数 - 实际完成数）</div><div class="gr-table-wrap"><table class="gr-table"><thead><tr><th class="th-name">项目名称</th>';
+  REMAINDER_COLS.forEach(c=>{ h+='<th>'+c.label+'</th>'; });
+  h+='<th class="th-total">合计</th><th class="th-deadline">截止时间</th><th class="th-team">负责团队</th><th class="th-prod">制作情况</th></tr></thead><tbody>';
+  // 按健康度分组渲染（支持筛选按钮跳转定位）
+  const groups={normal:[],warn:[],delay:[]};
+  rows.forEach(row=>{
+    const hl=(healthMap[ganttNormName(row.p.name)]||{level:'normal'}).level;
+    groups[hl].push(row);
+  });
+  const groupOrder=ganttHealthFilter==='all'?['delay','warn','normal']:(ganttHealthFilter?[ganttHealthFilter]:[]);
+  const showAll=ganttHealthFilter==='all' || groupOrder.length===0;
+  (showAll?['delay','warn','normal']:groupOrder).forEach(gKey=>{
+    const grp=groups[gKey];
+    if(!grp.length && !showAll) return;
+    if(showAll && grp.length){
+      const gLabel={delay:'⛔ 延期',warn:'⚠️ 预警',normal:'✅ 正常'}[gKey];
+      const gCls={delay:'gh-delay-tag',warn:'gh-warn-tag',normal:'gh-normal-tag'}[gKey];
+      h+='<tr class="gr-group-header" id="gr-group-'+gKey+'"><td colspan="'+(REMAINDER_COLS.length+5)+'"><span class="'+gCls+'">'+gLabel+'（'+grp.length+'个）</span></td></tr>';
+    }
+    grp.forEach(row=>{
+      const p=row.p;
+      const rowId='gr-row-'+gtId(p.name);
+      h+='<tr id="'+rowId+'"'+(row.totalRemain>0?' class="gr-row-gap"':'')+'><td class="td-name" title="'+esc(p.name)+'">'+esc(p.name)+'</td>';
+      let total=0;
+      row.cells.forEach(cell=>{
+        total+=cell.remain;
+        const v=cell.remain===0?'—':cell.remain.toFixed(cell.remain%1===0?0:1).replace(/\.0$/,'');
+        const cls=cell.remain>0?'gr-pos':(cell.remain<0?'gr-neg':'gr-zero');
+        const sub=(cell.reqVal>0)?'<span class="gr-sub">('+cell.reqVal+'/'+cell.actVal.toFixed(1).replace(/\.0$/,'')+')</span>':'';
+        h+='<td class="'+cls+'">'+v+sub+'</td>';
+      });
+      const tv=total===0?'—':total.toFixed(total%1===0?0:1).replace(/\.0$/,'');
+      const tcls=total>0?'gr-pos':(total<0?'gr-neg':'gr-zero');
+      const deadline=p.end?p.end:'—';
+      const team=p.resp_team?esc(p.resp_team):'—';
+      const prod=p.production_status?esc(p.production_status):'—';
+      h+='<td class="td-total '+tcls+'">'+tv+'</td>';
+      h+='<td class="td-deadline">'+deadline+'</td>';
+      h+='<td class="td-team">'+team+'</td>';
+      h+='<td class="td-prod">'+prod+'</td>';
+      h+='</tr>';
+    });
+  });
+  // 底部类型合计行
+  h+='<tr class="gr-total-row"><td class="td-name">📊 各类型合计</td>';
+  let grandTotal=0;
+  REMAINDER_COLS.forEach(col=>{
+    let sumR=0,sumA=0;
+    rows.forEach(row=>{
+      const norm=ganttNormName(row.p.name);
+      const r=reqAll[norm]||{}; const a=taAll[norm]||{};
+      sumR+=parseFloat(r[col.key])||0;
+      sumA+=parseFloat(a[col.key])||0;
+    });
+    const rem=sumR-sumA; grandTotal+=rem;
+    const v=rem===0?'—':rem.toFixed(rem%1===0?0:1).replace(/\.0$/,'');
+    const cls=rem>0?'gr-pos':(rem<0?'gr-neg':'gr-zero');
+    h+='<td class="'+cls+' gr-total-val">'+v+'<span class="gr-sub">('+sumR+'/'+sumA.toFixed(1).replace(/\.0$/,'')+')</span></td>';
+  });
+  const gtv=grandTotal===0?'—':grandTotal.toFixed(grandTotal%1===0?0:1).replace(/\.0$/,'');
+  const gtcls=grandTotal>0?'gr-pos':(grandTotal<0?'gr-neg':'gr-zero');
+  h+='<td class="td-total '+gtcls+' gr-total-val">'+gtv+'</td>';
+  h+='<td colspan="3"></td></tr>';
   h+='</tbody></table></div></div>';
   return h;
+}
+// ============ 状态筛选跳转 & 搜索回车滚动 ============
+// 点击筛选按钮后，如果余量表存在则滚动到对应分组
+function grScrollToGroup(level){
+  var el=document.getElementById('gr-group-'+level);
+  if(el){ el.scrollIntoView({behavior:'smooth',block:'start'}); }
+}
+// 搜索回车时在余量表中查找匹配项目并滚动定位
+function grScrollToSearch(query){
+  if(!query || !query.trim()) return;
+  var q=query.trim().toLowerCase();
+  var rows=document.querySelectorAll('#gr-table-wrap .gr-table tbody tr[id^="gr-row-"]');
+  for(var i=0;i<rows.length;i++){
+    var name=rows[i].getAttribute('data-pname')||rows[i].querySelector('.td-name');
+    if(name && name.textContent && name.textContent.toLowerCase().indexOf(q)>=0){
+      rows[i].scrollIntoView({behavior:'smooth',block:'center'});
+      rows[i].style.background='#fef3c7';
+      setTimeout(function(){ rows[i].style.background=''; },2000);
+      return true;
+    }
+  }
+  return false;
 }
 // ============ 甘特图搜索下拉（实时筛选 + 防抖 + 键盘导航 + 去重 + 点击外部关闭）============
 let ganttSearchTimer=null;
@@ -1781,7 +1857,7 @@ function ganttDDKey(ev){
   }
   if(ev.key==='Enter'){
     if(ganttDDOpen && ganttDDIndex>=0){ ev.preventDefault(); ganttDDSelect(ganttDDIndex); }
-    else { ganttSearchConfirmed=true; ganttCloseDD(); renderGantt(); }
+    else { var q=(ev.target.value||'').trim(); ganttSearchConfirmed=true; ganttCloseDD(); renderGantt(); setTimeout(function(){ grScrollToSearch(q); },150); }
     return;
   }
   if(ev.key==='Escape'){ ganttSearchConfirmed=false; ganttSearchText=''; const inp=document.getElementById('ganttSearchInput'); if(inp)inp.value=''; ganttCloseDD(); renderGantt(); return; }
@@ -2117,7 +2193,7 @@ function renderGantt(){
   h+=' <button class="gantt-sort-btn '+(ganttSortMode==='project'?'active':'')+'" onclick="ganttSortMode=\'project\';renderGantt()">项目排序</button>';
   h+=' <button class="gantt-sort-btn '+(ganttSortMode==='team'?'active':'')+'" onclick="ganttSortMode=\'team\';renderGantt()">团队排序</button>';
   h+=' <span class="gantt-filter">';
-  ['all','normal','warn','delay'].forEach(f=>{ h+='<button class="gantt-filter-btn '+(ganttHealthFilter===f?'active':'')+'" data-f="'+f+'" onclick="ganttHealthFilter=\''+f+'\';renderGantt()">'+({all:'全部',normal:'正常',warn:'预警',delay:'延期'}[f])+'</button>'; });
+  ['all','normal','warn','delay'].forEach(f=>{ h+='<button class="gantt-filter-btn '+(ganttHealthFilter===f?'active':'')+'" data-f="'+f+'" onclick="ganttHealthFilter=\''+f+'\';renderGantt();setTimeout(function(){grScrollToGroup(\''+f+'\');},100)">'+({all:'全部',normal:'正常',warn:'预警',delay:'延期'}[f])+'</button>'; });
   h+='</span>';
  h+=' <div class="gantt-search-wrap"><input id="ganttSearchInput" type="text" class="gantt-search-input" placeholder="🔍 搜索项目（名称/学校/地区）" value="'+esc(ganttSearchText)+'" oninput="ganttSearchInput(this)" onkeydown="ganttDDKey(event)" onfocus="ganttDDOpenDropdown(this.value)" autocomplete="off" title="输入关键词实时下拉匹配项目；↑↓选择，Enter确认，Esc关闭"></div>';
   h+='<span class="gantt-legend">';
