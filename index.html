@@ -433,13 +433,19 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .produce-left .chart-box,.produce-right .chart-box{flex:1;}
 .produce-right .chart-box canvas{max-height:360px;}
 /* 计划vs总结表格优化 */
-.plan-table{font-size:13px;}
-.plan-table th{font-size:12px;padding:8px 10px;white-space:nowrap;}
+.plan-table{font-size:13px;border-collapse:collapse;}
+.plan-table thead{position:sticky;top:0;z-index:2;background:#f8f9fa;box-shadow:0 1px 3px rgba(0,0,0,08);}
+.plan-table th{font-size:12px;padding:8px 10px;white-space:nowrap;background:#f8f9fa;}
 .plan-table td{padding:5px 10px;}
-.plan-month-row{background:#eaf0fa;color:#1a3a5c;font-weight:600;font-size:13px;}
+.plan-month-row{background:#eaf0fa;color:#1a3a5c;font-weight:600;font-size:13px;cursor:pointer;user-select:none;transition:background .15s;}
+.plan-month-row:hover{background:#d6e4f0;}
 .plan-month-row td{padding:7px 10px;}
+.plan-month-row .month-toggle{display:inline-block;width:16px;text-align:center;margin-right:4px;font-size:11px;transition:transform .2s;}
+.plan-month-row.collapsed .month-toggle{transform:rotate(-90deg);}
 .plan-proj-row{background:#f0f4f9;color:#2d6a9f;font-size:12.5px;padding-left:20px!important;}
 .plan-proj-row td{padding:5px 10px 5px 20px!important;}
+.plan-month-body{transition:max-height .3s ease,opacity .2s ease;overflow:hidden;}
+.plan-month-body.collapsed{max-height:0!important;opacity:0;}
 
 /* 地区标签（所有地区统一） */
 .gt-region{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:10px;margin-left:4px;vertical-align:middle;line-height:1.6;}
@@ -1208,6 +1214,8 @@ function updatePersonTags2(){
 }
 
 // ---------- 功能3：月度计划 vs 总结偏差（仅本团队，横向条形图）----------
+// 数据标准：X月表中的「(X+1)月计划」→ 归入 X+1 月 plan；X月表中的「X月总结」→ 归入 X 月 summary。
+// 例如：1月表的2月计划 vs 2月表的2月总结 → 2月偏差。
 function renderDeptPlan(team){
     const container=document.getElementById('deptTeamContent');
     if(!container) return;
@@ -1221,8 +1229,8 @@ function renderDeptPlan(team){
 
     const months=[1,2,3,4,5,6,7];
     const planTot=[], sumTot=[];
-    // 紧凑表格：去掉独立月份/项目头行，改用缩进+颜色区分
-    html+='<div class="table-box"><table class="plan-table"><thead><tr><th>月份</th><th>项目</th><th>类型</th><th>计划数量</th><th>总结数量</th><th>偏差</th></tr></thead><tbody>';
+    // 表格容器：限制高度 + sticky header
+    html+='<div class="table-box" style="max-height:600px;overflow-y:auto"><table class="plan-table"><thead><tr><th>月份</th><th>项目</th><th>类型</th><th>计划数量</th><th>总结数量</th><th>偏差</th></tr></thead><tbody>';
 
     let anyRow=false;
     months.forEach(m=>{
@@ -1232,8 +1240,12 @@ function renderDeptPlan(team){
         const projList=(d.projects_for_team&&d.projects_for_team[team])||[];
         let monthPlanSum=0, monthSumSum=0, monthHasData=false;
 
-        // 月份分组头（轻量样式）
-        html+='<tr class="plan-month-row"><td colspan="6">📅 '+m+'月</td></tr>';
+        const bodyId='planMonthBody_'+safeTeam+'_'+m;
+        // 月份行：可点击折叠/展开
+        html+='<tr class="plan-month-row" onclick="togglePlanMonth(\''+safeTeam+'\','+m+',this)" data-month="'+m+'">'+
+            '<td colspan="6"><span class="month-toggle">▼</span>📅 '+m+'月</td></tr>';
+        // 月份内容体（可收起）
+        html+='<tbody class="plan-month-body" id="'+bodyId+'">';
 
         projList.forEach(p=>{
             const plan=planProj[p.name]||planProj[p.key]||{};
@@ -1246,7 +1258,7 @@ function renderDeptPlan(team){
             const validTypes=[...types].filter(t=>((plan[t]||0)>0||(sum[t]||0)>0));
             if(validTypes.length===0) return;
             monthHasData=true; anyRow=true;
-            // 项目分组头（轻量样式）
+            // 项目分组头
             html+='<tr class="plan-proj-row"><td colspan="6">📁 '+esc(p.name)+'</td></tr>';
             validTypes.forEach(t=>{
                 const pq=plan[t]||0, sq=sum[t]||0;
@@ -1263,8 +1275,10 @@ function renderDeptPlan(team){
             });
         });
         if(!monthHasData){
-            html+='<tr><td colspan="6" style="text-align:center;color:#888">本月该团队暂无明细</td></tr>';
+            html+='<tr><td colspan="6" style="text-align:center;color:#888;padding:8px">本月该团队暂无明细</td></tr>';
         }
+        html+='</tbody>'; // end plan-month-body
+
         planTot.push(Math.round(monthPlanSum*10)/10);
         sumTot.push(Math.round(monthSumSum*10)/10);
     });
@@ -1285,6 +1299,18 @@ function renderDeptPlan(team){
                 scales:{x:{title:{display:true,text:'数量'},beginAtZero:true,grid:{color:'#eee'}},y:{grid:{display:false}}}}});
         }
     },60);
+}
+
+// 折叠/展开某月的计划vs总结明细
+function togglePlanMonth(safeTeam, month, rowEl){
+    const body=document.getElementById('planMonthBody_'+safeTeam+'_'+month);
+    if(!body) return;
+    const isCollapsed=body.classList.contains('collapsed');
+    body.classList.toggle('collapsed');
+    rowEl.classList.toggle('collapsed');
+    // 切换箭头方向
+    const toggle=rowEl.querySelector('.month-toggle');
+    if(toggle) toggle.textContent=isCollapsed?'▼':'▶';
 }
 
 // ========== 人员交互增强 ==========
