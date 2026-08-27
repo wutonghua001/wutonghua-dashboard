@@ -30,7 +30,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#f0f2f5;color:#333}
-.header{background:linear-gradient(135deg,#1a3a5c 0%,#2d6a9f 100%);color:#fff;padding:14px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,0.15)}
+.header{background:linear-gradient(135deg,#1a3a5c 0%,#2d6a9f 100%);color:#fff;padding:14px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,0.15);position:sticky;top:0;z-index:100}
 .header h1{font-size:21px;font-weight:600;letter-spacing:0.5px}
 .header-right{display:flex;align-items:center;gap:14px;font-size:14px}
 .header-right .time{opacity:0.85}
@@ -46,12 +46,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Micr
 .btn-push{margin-left:auto;background:#07c160;color:#fff;border:none;border-radius:14px;padding:5px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s}
 .btn-push:hover{background:#06ad56}
 .btn-push:disabled{opacity:.6;cursor:default}
-.nav-tabs{display:flex;background:#fff;border-bottom:2px solid #e8e8e8;overflow-x:auto;padding:0 16px;gap:2px;scrollbar-width:thin}
+.nav-tabs{display:flex;background:#fff;border-bottom:2px solid #e8e8e8;overflow-x:auto;padding:0 16px;gap:2px;scrollbar-width:thin;position:sticky;top:56px;z-index:99}
 .nav-tab{padding:12px 18px;cursor:pointer;font-size:15px;font-weight:500;color:#666;border-bottom:3px solid transparent;white-space:nowrap;transition:all 0.2s;border-radius:6px 6px 0 0;position:relative}
 .nav-tab:hover{color:#2d6a9f;background:#f5f9fc}
 .nav-tab.active{color:#1a3a5c;border-bottom-color:#2d6a9f;background:#f0f7fc}
 .nav-tab .badge{position:absolute;top:4px;right:4px;background:#e74c3c;color:#fff;font-size:11px;border-radius:10px;padding:1px 6px;line-height:1.3}
-.main-content{max-width:1400px;width:100%;padding:20px 32px;margin:0 auto}
+.main-content{max-width:1400px;width:100%;padding:20px 32px;margin:0 auto;transition:transform 0.15s ease;}
 .filters{background:#fff;border-radius:10px;padding:14px 20px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
 .filter-group{display:flex;align-items:center;gap:6px}
 .filter-group label{font-size:14px;font-weight:600;color:#555;white-space:nowrap}
@@ -413,12 +413,12 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .gt-leg-dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;}
 
 /* 部门团队内部导航 */
-.dept-team-nav{display:flex;flex-wrap:wrap;gap:6px;padding:10px 16px;background:#f8fafc;border-bottom:1px solid #eef1f5;}
+.dept-team-nav{display:flex;flex-wrap:wrap;gap:6px;padding:10px 16px;background:#f8fafc;border-bottom:1px solid #eef1f5;position:sticky;top:150px;z-index:89;}
 .dept-team-btn{padding:6px 16px;border:1px solid #d9e2ec;border-radius:20px;background:#fff;color:#5a6b80;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .dept-team-btn:hover{background:#f0f7fc;color:#2d6a9f;border-color:#bcd7ef;}
 .dept-team-btn.active{background:#2d6a9f;color:#fff;border-color:#2d6a9f;}
 /* v10.30 部门团队：产出+积分左右并列 / 计划横条图优化 */
-.dept-func-nav{display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px;background:#f4f8fc;border-bottom:1px solid #e6edf5;}
+.dept-func-nav{display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px;background:#f4f8fc;border-bottom:1px solid #e6edf5;position:sticky;top:192px;z-index:88;}
 .dept-func-btn{padding:8px 18px;border:1px solid #cfe0f0;border-radius:8px;background:#fff;color:#3a5068;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .dept-func-btn:hover{background:#eaf3fb;color:#2d6a9f;border-color:#a9cdec;}
 .dept-func-btn.active{background:#1a3a5c;color:#fff;border-color:#1a3a5c;box-shadow:0 2px 6px rgba(26,58,92,.25);}
@@ -428,11 +428,12 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .cell-missed{color:#c0392b;font-weight:600;background:rgba(231,76,60,.10);}
 
 /* 产出+积分 左右并列布局 */
-.produce-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:6px;align-items:stretch;}
+.produce-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:6px;align-items:start;}
 @media(max-width:1100px){.produce-grid{grid-template-columns:1fr;}}
-.produce-left,.produce-right{display:flex;flex-direction:column;gap:14px;min-width:0;height:100%;}
-.produce-left .chart-box,.produce-right .chart-box{flex:1;display:flex;flex-direction:column;min-height:0;}
-.produce-right .chart-box canvas{flex:1;min-height:0!important;max-height:none;}
+.produce-left,.produce-right{display:flex;flex-direction:column;gap:14px;min-width:0;}
+.produce-left .chart-box,.produce-right .chart-box{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.produce-right .chart-box{min-height:380px;}
+.produce-right .chart-box canvas{width:100%!important;height:100%!important;}
 /* 模块统计卡（顶部通栏 · 横排3列） */
 .stat-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:4px 0 4px;}
 .stat-card{background:linear-gradient(135deg,#ffffff,#f3f8fd);border:1px solid #e3edf6;border-left:4px solid #2d6a9f;border-radius:12px;padding:16px 18px;box-shadow:0 2px 8px rgba(26,58,92,0.06);transition:transform .15s,box-shadow .15s;}
@@ -453,16 +454,15 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .cat-digital{color:#f39c12!important;}
 .cat-interact{color:#27ae60!important;}
 /* 计划vs总结表格（表头统一渐变背景，参考月度计划风格） */
-.plan-table{font-size:13px;border-collapse:separate;border-spacing:0;width:100%;border-radius:10px;overflow:hidden;}
-.plan-table-wrap{overflow:visible;}
+.plan-table{font-size:13px;border-collapse:collapse;width:100%;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
+.plan-table-wrap{overflow-x:auto;}
 .plan-table thead{background:linear-gradient(135deg,#667eea,#764ba2);}
-.plan-table thead th{color:#fff;font-weight:700;font-size:13px;padding:11px 14px;text-align:center;border:none;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.08);}
-.plan-table thead tr:first-child th:first-child{border-radius:8px 0 0 0;}
-.plan-table thead tr:first-child th:last-child{border-radius:0 8px 0 0;}
-.plan-table tbody td{padding:7px 12px;background:#fff;border-bottom:1px solid #eef2f6;color:#334155;text-align:center;}
+.plan-table thead th{color:#fff;font-weight:700;font-size:14px;padding:12px 16px;text-align:center;border:none;border-right:1px solid rgba(255,255,255,0.15);white-space:nowrap;}
+.plan-table thead th:last-child{border-right:none;}
+.plan-table tbody td{padding:8px 14px;background:#fff;border-bottom:1px solid #eef2f6;color:#334155;}
 .plan-table tbody tr:hover td{background:#f8fafc;}
 .plan-month-row{cursor:pointer;user-select:none;}
-.plan-month-row td{color:#fff;font-weight:700;font-size:14px;padding:11px 14px;border:none;display:flex;align-items:center;gap:8px;background:inherit;box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+.plan-month-row td{color:#fff;font-weight:700;font-size:14px;padding:12px 16px;border:none;display:flex;align-items:center;gap:8px;background:inherit;}
 .plan-month-row .plan-month-toggle{margin-left:auto;font-size:12px;opacity:.9;transition:transform .2s}
 .plan-month-row.collapsed .plan-month-toggle{transform:rotate(-90deg)}
 .plan-month-row.plan-m1{background:linear-gradient(135deg,#667eea,#764ba2)}
@@ -475,6 +475,7 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .plan-proj-row{background:#eef4fa;color:#2d6a9f;font-size:12.5px;font-weight:600;}
 .plan-proj-row td{padding:7px 12px 7px 18px;border-bottom:1px solid #e3eaf2;text-align:left;}
 .plan-data-row td:first-child{text-align:left;padding-left:18px;}
+.plan-data-row td:nth-child(2){text-align:left;font-weight:500;color:#1a3a5c;}
 .plan-empty-row td{text-align:center;color:#94a3b8;padding:10px;}
 .plan-month-body.collapsed{display:none;}
 
@@ -669,10 +670,23 @@ function mapTeamName(mt) {
 }
 
 // ========== 字号 / 视图缩放（5档，持久化）============
+// 使用 transform:scale 替代 style.zoom，避免点击坐标偏移问题
 function setFontSize(v){
     v=parseFloat(v)||1;
     const mc=document.querySelector('.main-content');
-    if(mc) mc.style.zoom=v;
+    if(mc){
+        if(v===1){
+            mc.style.transform='';
+            mc.style.transformOrigin='';
+            mc.style.width='';
+            mc.style.marginBottom='';
+        }else{
+            mc.style.transform='scale('+v+')';
+            mc.style.transformOrigin='0 0';
+            mc.style.width=(100/v)+'%';
+            mc.style.marginBottom=((v-1)*mc.offsetHeight)+'px';
+        }
+    }
     try{localStorage.setItem('wth_fontsize',String(v));}catch(e){}
 }
 
@@ -1334,7 +1348,8 @@ function renderDeptPlan(team){
                 const dev=sq-pq;
                 const devTxt=(dev>0?'+':'')+(Math.round(dev*10)/10);
                 html+='<tr class="plan-data-row" data-month="'+m+'">'+
-                    '<td>'+esc(t)+'</td>'+
+                    '<td></td>'+
+                    '<td style="text-align:left">'+esc(t)+'</td>'+
                     '<td>'+(pq>0?pq.toFixed(1):'<span style="color:#bbb">—</span>')+'</td>'+
                     '<td>'+(sq>0?sq.toFixed(1):'<span style="color:#bbb">—</span>')+'</td>'+
                     '<td class="'+(dev>0?'cell-added':(dev<0?'cell-missed':''))+'">'+devTxt+'</td>'+
