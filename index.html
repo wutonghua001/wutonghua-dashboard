@@ -302,6 +302,8 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .gt-project.gh-normal{box-shadow:inset 3px 0 0 #27ae60}
 .gt-project.gh-warn{box-shadow:inset 3px 0 0 #f39c12}
 .gt-project.gh-delay{box-shadow:inset 3px 0 0 #e74c3c}
+/* 搜索跳转高亮（3秒后自动消失） */
+.gt-project.gr-jump-hl{background:linear-gradient(90deg,#fef3c7 0%,#fff 40%,#fff 100%);box-shadow:0 0 0 2px #f59e0b,0 4px 12px rgba(245,158,11,.25);transition:background .3s,box-shadow .3s;}
 /* 项目余量汇总表（v10.8） */
 .gantt-remainder{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 6px;margin-bottom:12px}
 .gr-title{font-size:14px;font-weight:600;color:#1e293b;margin-bottom:8px}
@@ -499,15 +501,15 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .gt-bar-req-tag{left:auto;right:4px;color:#1a3a5c;background:rgba(255,255,255,.92);text-shadow:0 1px 1px rgba(0,0,0,.15);border:1px solid rgba(160,180,200,.5);}  /* 白底深蓝字：在浅蓝条上清晰可辨 */
 /* 搜索下拉（实时匹配） */
 .gantt-search-wrap{display:inline-block;position:relative;}
-.gt-search-dd{display:none;position:fixed;z-index:9999;background:#fff;border:1px solid #d9e2ec;border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.15);max-height:300px;overflow-y:auto;}
-.gt-dd-item{padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center;border-bottom:1px solid #f0f2f5;}
+.gt-search-dd{display:none;position:fixed;z-index:9999;background:#fff;border:1px solid #d9e2ec;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.18);max-height:360px;overflow-y:auto;min-width:420px;}
+.gt-dd-item{padding:10px 14px;cursor:pointer;display:flex;flex-direction:column;gap:2px;align-items:flex-start;border-bottom:1px solid #f0f2f5;}
 .gt-dd-item:last-child{border-bottom:none;}
 .gt-dd-item:hover,.gt-dd-item.active{background:#eaf4fc;}
-.gt-dd-name{font-size:13px;color:#2c3e50;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;}
-.gt-dd-meta{font-size:11px;color:#95a5a6;white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:4px;}
-.gt-dd-empty{padding:12px;color:#95a5a6;font-size:13px;text-align:center;}
+.gt-dd-name{font-size:13.5px;color:#1a3a5c;font-weight:600;line-height:1.4;word-break:break-word;}
+.gt-dd-meta{font-size:11.5px;color:#7f8c9d;display:flex;align-items:center;gap:6px;margin-top:2px;}
+.gt-dd-empty{padding:16px;color:#95a5a6;font-size:13.5px;text-align:center;}
 /* 甘特图搜索框 */
-.gantt-search-input{padding:4px 10px;border:1px solid #d9e2ec;border-radius:6px;font-size:13px;width:160px;outline:none;transition:border-color .15s;background:#fff;color:#333;}
+.gantt-search-input{padding:5px 12px;border:1px solid #d9e2ec;border-radius:6px;font-size:13px;width:200px;outline:none;transition:border-color .15s,box-shadow .15s;background:#fff;color:#333;}
 .gantt-search-input:focus{border-color:#3498db;box-shadow:0 0 0 2px rgba(52,152,219,.15);}
 .gantt-search-input::placeholder{color:#aab2c0;}
 /* 制作情况标签 */
@@ -2270,10 +2272,15 @@ function ganttDDOpenDropdown(q){
   ganttDDMatch=matches; ganttDDIndex=-1;
   if(matches.length===0){ dd.innerHTML='<div class="gt-dd-empty">无匹配结果</div>'; }
   else {
-    dd.innerHTML=matches.slice(0,60).map(function(p,i){
+    dd.innerHTML=matches.slice(0,80).map(function(p,i){
+      // 主行：完整项目名；副行：地区+学校（可选）
+      var metaParts=[];
+      if(p.region) metaParts.push(regionTag(p.region));
+      if(p.school) metaParts.push(esc(p.school));
+      var metaStr=metaParts.join(' · ');
       return '<div class="gt-dd-item" data-i="'+i+'" onmousedown="ganttDDSelect('+i+',event)">'
         +'<span class="gt-dd-name">'+esc(p.name)+'</span>'
-        +'<span class="gt-dd-meta">'+regionTag(p.region)+(p.school?' '+esc(p.school):'')+'</span>'
+        +(metaStr?'<span class="gt-dd-meta">'+metaStr+'</span>':'')
         +'</div>';
     }).join('');
   }
@@ -2281,7 +2288,7 @@ function ganttDDOpenDropdown(q){
   dd.style.position='fixed';
   dd.style.left=r.left+'px';
   dd.style.top=(r.bottom+4)+'px';
-  dd.style.width=Math.max(r.width, 340)+'px';
+  dd.style.width=Math.max(r.width, 480)+'px';
   dd.style.display='block';
   ganttDDOpen=true;
 }
@@ -2290,11 +2297,56 @@ function ganttDDSelect(i,ev){
   if(ev) ev.preventDefault();
   const p=ganttDDMatch[i]; if(!p) return;
   ganttSearchText=p.name;
-  ganttSearchConfirmed=true; // 标记已确认，后续仅显示匹配项
+  ganttSearchConfirmed=true;
   const input=document.getElementById('ganttSearchInput');
   if(input) input.value=p.name;
   ganttCloseDD();
   renderGantt();
+  // 渲染完成后跳转到该项目并展开
+  setTimeout(function(){ grJumpToProject(p.name); },200);
+}
+
+// 跳转到甘特图中指定项目位置，展开团队和子任务行
+function grJumpToProject(projectName){
+  if(!projectName) return;
+  // 按data-pname查找项目节点（支持模糊匹配）
+  var nodes=document.querySelectorAll('.gt-project[data-pname]');
+  var target=null;
+  var pn=projectName.replace(/\s+/g,'').toLowerCase();
+  for(var i=0;i<nodes.length;i++){
+    var np=(nodes[i].getAttribute('data-pname')||'').replace(/\s+/g,'').toLowerCase();
+    if(np===pn || np.indexOf(pn)>=0 || pn.indexOf(np)>=0){ target=nodes[i]; break; }
+  }
+  if(!target){
+    // 兜底：按文本内容匹配
+    var allNames=document.querySelectorAll('.gantt-name');
+    for(var j=0;j<allNames.length;j++){
+      var nt=(allNames[j].textContent||'').replace(/\s+/g,'').toLowerCase();
+      if(nt===pn || nt.indexOf(pn)>=0 || pn.indexOf(nt)>=0){ target=allNames[j].closest('.gt-project'); break; }
+    }
+  }
+  if(!target) return;
+  // 展开自身（项目节点）
+  var kids=target.querySelector(':scope > .gt-children');
+  if(kids && kids.hidden){
+    target.classList.add('open');
+    kids.hidden=false;
+  }
+  // 如果在团队排序模式下，还需展开父级团队节点
+  var parentTeam=target.parentElement && target.parentElement.parentElement;
+  if(parentTeam && parentTeam.classList.contains('gt-team-top')){
+    var teamKids=parentTeam.querySelector(':scope > .gt-children');
+    if(teamKids && teamKids.hidden){
+      parentTeam.classList.add('open');
+      teamKids.hidden=false;
+    }
+  }
+  // 滚动到视口中央 + 高亮
+  target.scrollIntoView({behavior:'smooth',block:'center'});
+  // 高亮效果：先清旧高亮
+  document.querySelectorAll('.gr-jump-hl').forEach(function(el){ el.classList.remove('gr-jump-hl'); });
+  target.classList.add('gr-jump-hl');
+  setTimeout(function(){ target.classList.remove('gr-jump-hl'); },3000);
 }
 function ganttDDFocus(){
   const dd=document.getElementById('ganttSearchFloat'); if(!dd) return;
@@ -2317,7 +2369,22 @@ function ganttDDKey(ev){
   }
   if(ev.key==='Enter'){
     if(ganttDDOpen && ganttDDIndex>=0){ ev.preventDefault(); ganttDDSelect(ganttDDIndex); }
-    else { var q=(ev.target.value||'').trim(); ganttSearchConfirmed=true; ganttCloseDD(); renderGantt(); setTimeout(function(){ grScrollToSearch(q); },150); }
+    else {
+      // 回车时：如果有下拉匹配项则选第一个，否则用输入文本跳转
+      var q=(ev.target.value||'').trim();
+      if(!q) return;
+      ganttSearchConfirmed=true; ganttCloseDD(); renderGantt();
+      // 优先从已匹配列表中找精确/模糊匹配
+      var found=null;
+      var ql=q.toLowerCase();
+      for(var mi=0;mi<ganttDDMatch.length;mi++){
+        var mn=(ganttDDMatch[mi].name||'').replace(/\s+/g,'').toLowerCase();
+        if(mn===ql.replace(/\s+/g,'') || mn.indexOf(ql)>=0 || ql.indexOf(mn)>=0){
+          found=ganttDDMatch[mi].name; break;
+        }
+      }
+      setTimeout(function(){ grJumpToProject(found||q); },200);
+    }
     return;
   }
   if(ev.key==='Escape'){ ganttSearchConfirmed=false; ganttSearchText=''; const inp=document.getElementById('ganttSearchInput'); if(inp)inp.value=''; ganttCloseDD(); renderGantt(); return; }
