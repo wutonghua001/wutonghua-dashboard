@@ -2302,48 +2302,58 @@ function ganttDDSelect(i,ev){
   if(input) input.value=p.name;
   ganttCloseDD();
   renderGantt();
-  // 渲染完成后跳转到该项目并展开
-  setTimeout(function(){ grJumpToProject(p.name); },200);
+  // 等待 DOM 重渲染 + 布局完成（rAF×2 避开 transform 过渡窗口）再跳转定位
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){ grJumpToProject(p.name); }); });
 }
 
 // 跳转到甘特图中指定项目位置，展开团队和子任务行
 function grJumpToProject(projectName){
   if(!projectName) return;
-  // 按data-pname查找项目节点（支持模糊匹配）
-  var nodes=document.querySelectorAll('.gt-project[data-pname]');
-  var target=null;
   var pn=projectName.replace(/\s+/g,'').toLowerCase();
-  for(var i=0;i<nodes.length;i++){
-    var np=(nodes[i].getAttribute('data-pname')||'').replace(/\s+/g,'').toLowerCase();
-    if(np===pn || np.indexOf(pn)>=0 || pn.indexOf(np)>=0){ target=nodes[i]; break; }
-  }
-  if(!target){
-    // 兜底：按文本内容匹配
-    var allNames=document.querySelectorAll('.gantt-name');
-    for(var j=0;j<allNames.length;j++){
-      var nt=(allNames[j].textContent||'').replace(/\s+/g,'').toLowerCase();
-      if(nt===pn || nt.indexOf(pn)>=0 || pn.indexOf(nt)>=0){ target=allNames[j].closest('.gt-project'); break; }
+  function findTarget(){
+    var nodes=document.querySelectorAll('.gt-project[data-pname]');
+    for(var i=0;i<nodes.length;i++){
+      var np=(nodes[i].getAttribute('data-pname')||'').replace(/\s+/g,'').toLowerCase();
+      if(np===pn || np.indexOf(pn)>=0 || pn.indexOf(np)>=0) return nodes[i];
     }
+    var names=document.querySelectorAll('.gantt-name');
+    for(var j=0;j<names.length;j++){
+      var nt=(names[j].textContent||'').replace(/\s+/g,'').toLowerCase();
+      if(nt===pn || nt.indexOf(pn)>=0 || pn.indexOf(nt)>=0) return names[j].closest('.gt-project');
+    }
+    return null;
   }
-  if(!target) return;
+  var target=findTarget();
+  if(!target){
+    // 目标可能因年份筛选未渲染 → 尝试切换到该项目所在年份后重试一次
+    var data=((typeof GANTT_DATA!=='undefined'&&GANTT_DATA&&GANTT_DATA.projects)||[]);
+    var proj=data.find(function(x){ var xn=(x.name||'').replace(/\s+/g,'').toLowerCase(); return xn===pn || xn.indexOf(pn)>=0 || pn.indexOf(xn)>=0; });
+    if(proj){
+      var y=(proj.start||proj.end||proj.actual||'').slice(0,4);
+      if(y && y!==String(ganttYear)){ ganttYear=y; renderGantt(); }
+    }
+    requestAnimationFrame(function(){ var t2=findTarget(); if(t2) doJump(t2); else showToast('未找到匹配项目：'+projectName,'warn',4000); });
+    return;
+  }
+  doJump(target);
+}
+function doJump(target){
   // 展开自身（项目节点）
   var kids=target.querySelector(':scope > .gt-children');
-  if(kids && kids.hidden){
-    target.classList.add('open');
-    kids.hidden=false;
-  }
+  if(kids){ target.classList.add('open'); kids.hidden=false; }
   // 如果在团队排序模式下，还需展开父级团队节点
-  var parentTeam=target.parentElement && target.parentElement.parentElement;
-  if(parentTeam && parentTeam.classList.contains('gt-team-top')){
-    var teamKids=parentTeam.querySelector(':scope > .gt-children');
-    if(teamKids && teamKids.hidden){
-      parentTeam.classList.add('open');
-      teamKids.hidden=false;
-    }
+  var pt=target.parentElement && target.parentElement.parentElement;
+  if(pt && pt.classList.contains('gt-team-top')){
+    var tk=pt.querySelector(':scope > .gt-children');
+    if(tk){ pt.classList.add('open'); tk.hidden=false; }
   }
-  // 滚动到视口中央 + 高亮
-  target.scrollIntoView({behavior:'smooth',block:'center'});
-  // 高亮效果：先清旧高亮
+  // 处理缩放容器：.mc-inner 的 transform:scale() 会破坏 scrollIntoView 坐标 → 临时解除再滚动
+  var mc=document.querySelector('.mc-inner');
+  var prevTransform = mc ? mc.style.transform : '';
+  if(mc && prevTransform){ mc.style.transform=''; }
+  try{ target.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){ target.scrollIntoView(); }
+  if(mc && prevTransform){ setTimeout(function(){ mc.style.transform=prevTransform; }, 360); }
+  // 高亮效果（先清旧高亮）
   document.querySelectorAll('.gr-jump-hl').forEach(function(el){ el.classList.remove('gr-jump-hl'); });
   target.classList.add('gr-jump-hl');
   setTimeout(function(){ target.classList.remove('gr-jump-hl'); },3000);
@@ -2383,7 +2393,7 @@ function ganttDDKey(ev){
           found=ganttDDMatch[mi].name; break;
         }
       }
-      setTimeout(function(){ grJumpToProject(found||q); },200);
+      requestAnimationFrame(function(){ requestAnimationFrame(function(){ grJumpToProject(found||q); }); });
     }
     return;
   }
@@ -2463,8 +2473,8 @@ function renderGantt(){
     const filtered=scored.filter(x=>x.score>0);
     filtered.sort((a,b)=>b.score-a.score);
     if(ganttSearchConfirmed){
-      // 已确认选择：仅显示匹配项
-      list=filtered.map(x=>x.p);
+      // 已确认选择：保留全部项目（不移除其他项，确保跳转目标一定存在），仅记录关键词用于高亮
+      // 注意：早年版本在此处把列表过滤为「仅匹配项」，会导致目标项目被移除、跳转函数找不到节点 → 不展开也不滚动。现改为保留全部。
     } else {
       // 输入中（未确认）：匹配项排前，未匹配项保留在末尾
       const unmatched=scored.filter(x=>x.score<=0);
