@@ -1010,6 +1010,9 @@ function renderOverview() {
     });
     cardsHtml+='</div></div>';
 
+    // ===== 数据分析说明（对应部门团队那张，置于「类别与目标概览」下方，默认折叠）=====
+    cardsHtml += renderOverviewCauseCard();
+
     // ===== 项目成本汇总（引用 01项目数据录入） =====
     const projects=PROJ.projects||[];
     const costMap={};
@@ -1227,6 +1230,46 @@ function renderDeptCauseCard(isTeam, teamLabel){
 function toggleDeptCause(head){
   const card = head.closest('.dept-cause-card');
   if(card) card.classList.toggle('collapsed');
+}
+
+// ========== 年度总览：数据分析说明（对应部门团队那张，置于「类别与目标概览」下方，默认折叠）==========
+function renderOverviewCauseCard(){
+  const cats = DISPLAY_CATEGORIES;
+  let totalQty=0, totalTarget=0;
+  const rows=[];
+  cats.forEach(function(cat){
+    const catData=DATA.categories[cat]||{};
+    let qty=0;
+    for(const m in catData){ qty += (catData[m].qty||0); }
+    const t=ANNUAL_TARGETS[cat];
+    const pct = (t && t>0) ? (qty/t*100) : null;
+    if(t){ totalQty+=qty; totalTarget+=t; }
+    rows.push({cat:cat, qty:qty, target:t, pct:pct});
+  });
+  function v(x){ return (x==null? -1e9 : x); }
+  rows.sort(function(a,b){ return v(b.pct) - v(a.pct); });
+  const overallPct = totalTarget>0 ? (totalQty/totalTarget*100) : 0;
+  const monthsN = DATA.all_months? DATA.all_months.length : 0;
+  const summary = '截至当前（'+ monthsN +' 个月数据），5 大类资源累计完成 '+ totalQty.toFixed(0) +' 个，整体目标完成率 '+ overallPct.toFixed(1) +'%。下方按目标完成率排序展示各大类表现，并附口径说明。';
+  let ul='';
+  rows.forEach(function(r){
+    if(r.pct==null){
+      ul += '<li><b>'+r.cat+'</b>：累计 '+r.qty.toFixed(0)+' 个（未设年度目标，按数量展示）。</li>';
+    } else {
+      const st = r.pct>=80?'已完成/超额在望':r.pct>=50?'进度过半':r.pct>=30?'滞后预警':'明显滞后';
+      ul += '<li><b>'+r.cat+'</b>：累计 '+r.qty.toFixed(0)+' / 目标 '+r.target+'，完成率 '+r.pct.toFixed(1)+'%，'+st+'。</li>';
+    }
+  });
+  ul += '<li>口径说明：①「类别与目标概览」卡片汇总全部已有月份，不随上方月份筛选变化；②视频类含课程视频、样片、宣传片、申报视频、参赛微课、课堂实录；③累计量来自 gantt 底层 OVERVIEW_CATEGORIES，与「自定义大类对比」表口径已统一（2026 年 1 月同为 392.6）。</li>';
+  return '<div class="dept-cause-card collapsed" id="overviewCauseCard">'+
+    '<div class="dc-head" onclick="toggleDeptCause(this)">'+
+      '<span class="dc-ico">📊</span>'+
+      '<span class="dc-title">数据分析说明</span>'+
+      '<span class="dc-team">年度总览</span>'+
+      '<span class="dc-toggle">▾</span>'+
+    '</div>'+
+    '<div class="dc-body"><p class="dc-summary">'+summary+'</p><ul>'+ul+'</ul></div>'+
+  '</div>';
 }
 
 function renderDeptProduce(){
