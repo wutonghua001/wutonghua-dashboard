@@ -138,6 +138,11 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .section-nav .sn-label{font-size:13px;color:#888;font-weight:600;margin-right:2px;white-space:nowrap}
 .section-nav a{font-size:14px;color:#2d6a9f;background:#fff;border:1px solid #d9e2ec;padding:5px 13px;border-radius:14px;cursor:pointer;white-space:nowrap;transition:all 0.15s;text-decoration:none;font-weight:500}
 .section-nav a:hover{background:#2d6a9f;color:#fff;border-color:#2d6a9f}
+/* 年度总览/部门项目 本页导航：置于 .mc-inner 外，sticky 在缩放层外生效（v10.42） */
+.section-nav-outer{display:none;flex-wrap:wrap;gap:8px;align-items:center;position:sticky;top:104px;z-index:87;left:0;right:0;background:#f0f2f5;padding:8px 12px;margin-bottom:16px;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.06);}
+.section-nav-outer .sn-label{font-size:13px;color:#888;font-weight:600;margin-right:2px;white-space:nowrap}
+.section-nav-outer a{font-size:14px;color:#2d6a9f;background:#fff;border:1px solid #d9e2ec;padding:5px 13px;border-radius:14px;cursor:pointer;white-space:nowrap;transition:all 0.15s;text-decoration:none;font-weight:500}
+.section-nav-outer a:hover{background:#2d6a9f;color:#fff;border-color:#2d6a9f}
 [id^="sec-"]{scroll-margin-top:170px}
 /* detail modal */
 .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:2000;opacity:0;pointer-events:none;transition:opacity 0.2s}
@@ -567,6 +572,8 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
   <!-- 固定导航区（置于内容前=顶部，在缩放层外，sticky 生效） -->
   <div class="dept-team-nav" id="deptTeamNav"></div>
   <div class="dept-func-nav" id="deptFuncNav"></div>
+  <div class="section-nav-outer" id="overviewNav"></div>
+  <div class="section-nav-outer" id="projectsNav"></div>
   <div class="mc-inner">
   <div class="panel active" id="panel-overview"></div>
   <div class="panel" id="panel-projects"></div>
@@ -753,21 +760,24 @@ function init() {
         const sv=localStorage.getItem('wth_fontsize');
         if(sv){const sel=document.getElementById('fontSizeSel');if(sel)sel.value=sv;setFontSize(sv);}
     }catch(e){}
-    renderOverview();
+    switchTeam('overview');
 }
 
 function switchTeam(team) {
     selectedTeam=team; selectedPersons=[];
-    // 切换tab时先隐藏部门团队导航（后续按需显示）
+    // 切换tab时先隐藏所有固定导航（后续按需显示）
     const tn=document.getElementById('deptTeamNav'), fn=document.getElementById('deptFuncNav');
     if(tn) tn.style.display='none';
     if(fn) fn.style.display='none';
+    const ovNav=document.getElementById('overviewNav'), pjNav=document.getElementById('projectsNav');
+    if(ovNav) ovNav.style.display='none';
+    if(pjNav) pjNav.style.display='none';
     document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
     const target=document.querySelector('.nav-tab[data-tab="'+team+'"]');
     if(target) target.classList.add('active');
     document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-    if(team==='overview'){document.getElementById('panel-overview').classList.add('active');renderOverview();}
-    else if(team==='projects'){document.getElementById('panel-projects').classList.add('active');renderProjects();}
+    if(team==='overview'){document.getElementById('panel-overview').classList.add('active');renderOverview();const _ov=document.getElementById('overviewNav');if(_ov)_ov.style.display='flex';}
+    else if(team==='projects'){document.getElementById('panel-projects').classList.add('active');renderProjects();const _pj=document.getElementById('projectsNav');if(_pj)_pj.style.display='flex';}
     else if(team==='gantt'){document.getElementById('panel-gantt').classList.add('active');renderGanttPanel();}
     else if(team==='monthly-plan'){document.getElementById('panel-monthly-plan').classList.add('active');renderMonthlyPlanPanel();}
     else if(team==='dept-teams'){
@@ -909,6 +919,14 @@ function sectionNavHTML(items){
   items.forEach(it=>{ h+='<a onclick="scrollToSec(\''+it.id+'\')">'+it.label+'</a>'; });
   return h+'</div>';
 }
+// 外部导航（置于 .mc-inner 外，缩放层外 sticky 生效）：年度总览/部门项目 用
+function renderSectionNav(targetId, items){
+  const nav=document.getElementById(targetId);
+  if(!nav) return;
+  let h='<span class="sn-label">📑 本页导航</span>';
+  items.forEach(it=>{ h+='<a onclick="scrollToSec(\''+it.id+'\')">'+it.label+'</a>'; });
+  nav.innerHTML=h;
+}
 function scrollToSec(id){
   const el=document.getElementById(id);
   if(!el) return;
@@ -917,9 +935,13 @@ function scrollToSec(id){
   const navTabs=document.querySelector('.nav-tabs');
   if(header) offset+=header.offsetHeight;
   if(navTabs) offset+=navTabs.offsetHeight;
+  // 兼容内部 .section-nav 与外部 .section-nav-outer（取当前可见的那个）
   const panel=el.closest('.panel');
   const secNav=panel?panel.querySelector('.section-nav'):null;
+  let secNavOuter=null;
+  document.querySelectorAll('.section-nav-outer').forEach(n=>{ if(getComputedStyle(n).display!=='none') secNavOuter=n; });
   if(secNav) offset+=secNav.offsetHeight;
+  else if(secNavOuter) offset+=secNavOuter.offsetHeight;
   offset+=14;
   const top=el.getBoundingClientRect().top+window.scrollY-offset;
   window.scrollTo({top:Math.max(0,top),behavior:'smooth'});
@@ -930,10 +952,7 @@ function renderOverview() {
     const container=document.getElementById('panel-overview');
     const months=DATA.all_months.filter(m=>selectedMonths.includes(m));
 
-    let cardsHtml=sectionNavHTML([
-        {id:'sec-ov-cards', label:'类别与目标概览'},
-        {id:'sec-ov-cost', label:'年度项目汇总'}
-    ])+'<div id="sec-ov-cards"><div class="cards">';
+    let cardsHtml='<div id="sec-ov-cards"><div class="cards">';
     DISPLAY_CATEGORIES.forEach(cat=>{
         const catData=DATA.categories[cat]||{};
         let totalQty=0, totalDur=0, totalPages=0, totalHours=0, totalCost=0;
@@ -1059,6 +1078,10 @@ function renderOverview() {
     cardsHtml+='</tbody></table></div>';
 
     container.innerHTML=cardsHtml;
+    renderSectionNav('overviewNav', [
+        {id:'sec-ov-cards', label:'类别与目标概览'},
+        {id:'sec-ov-cost', label:'年度项目汇总'}
+    ]);
     setTimeout(()=>{
         renderOverviewCharts(months);
         const container=document.getElementById('panel-overview');
@@ -1191,7 +1214,7 @@ function renderDeptCauseCard(isTeam, teamLabel){
   let body = '<p class="dc-summary">'+data.summary+'</p><ul>';
   (data.points||[]).forEach(function(p){ body += '<li>'+p+'</li>'; });
   body += '</ul>';
-  return '<div class="dept-cause-card" id="deptCauseCard">'+
+  return '<div class="dept-cause-card collapsed" id="deptCauseCard">'+
     '<div class="dc-head" onclick="toggleDeptCause(this)">'+
       '<span class="dc-ico">📊</span>'+
       '<span class="dc-title">数据分析说明</span>'+
@@ -1597,13 +1620,7 @@ function renderProjects() {
     // 按地区统计
     const regionStats=PROJ.region_stats||{};
 
-    let html=sectionNavHTML([
-        {id:'sec-pj-stats', label:'统计概览'},
-        {id:'sec-pj-cmp', label:'大类数据对比'},
-        {id:'sec-pj-case', label:'典型案例分析'},
-        {id:'sec-pj-list', label:'部门项目列表'},
-        {id:'sec-pj-attrition', label:'人员流失数据情况'}
-    ])+'<div id="sec-pj-stats"><div class="cards">'+
+    let html='<div id="sec-pj-stats"><div class="cards">'+
         '<div class="card" style="border-left:4px solid #2d6a9f;padding-left:16px"><div class="card-title">🏢 总项目数</div><div class="card-value">'+PROJ.total_projects+'</div><div class="card-sub">分布在 '+PROJ.school_count+' 所学校</div></div>'+
         '<div class="card" style="border-left:4px solid #27ae60;padding-left:16px"><div class="card-title">💰 总金额</div><div class="card-value" style="font-size:23px">¥'+(totalAmount/10000).toFixed(0)+'万</div><div class="card-sub">¥'+Math.round(totalAmount).toLocaleString()+' ('+countWithAmount+'个有金额项目)</div></div>'+
         '<div class="card" style="border-left:4px solid #2ecc71;padding-left:16px"><div class="card-title">已完结</div><div class="card-value">'+(statusStats['已完结']?.count||0)+'</div><div class="card-sub">¥'+(Math.round(statusStats['已完结']?.amount||0)).toLocaleString()+'</div></div>'+
@@ -1692,6 +1709,13 @@ function renderProjects() {
     html+='<div id="sec-pj-attrition"><div id="attritionContainer"></div></div>';
 
     container.innerHTML=html;
+    renderSectionNav('projectsNav', [
+        {id:'sec-pj-stats', label:'统计概览'},
+        {id:'sec-pj-cmp', label:'大类数据对比'},
+        {id:'sec-pj-case', label:'典型案例分析'},
+        {id:'sec-pj-list', label:'部门项目列表'},
+        {id:'sec-pj-attrition', label:'人员流失数据情况'}
+    ]);
 
     // 渲染大类对比模块
     renderCategoryCompare();
