@@ -1232,6 +1232,9 @@ function toggleDeptCause(head){
 function renderDeptProduce(){
     const container=document.getElementById('deptTeamContent');
     if(!container) return;
+    // 默认选中全部月份：selectedMonths 初始为空会使明细表整张不渲染（所有月份行被过滤），
+    // 造成「选了全部却没数据」的假象
+    if(!selectedMonths || selectedMonths.length===0){ selectedMonths = (DATA.all_months||[]).slice(); }
 
     // ===== 顶部过滤器（月份 + 人员选择，合并为一行）=====
     const activeMonthCount=selectedMonths.length;
