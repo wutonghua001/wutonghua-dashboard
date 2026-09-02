@@ -122,6 +122,11 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .project-filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .project-filters select,.project-filters input{padding:5px 10px;border:1px solid #d9d9d9;border-radius:6px;font-size:13px}
 .project-filters input{width:120px}
+.search-wrap{position:relative;display:inline-block}
+.search-wrap input{width:160px}
+.search-suggest{position:absolute;top:100%;left:0;right:0;margin-top:4px;background:#fff;border:1px solid #d9d9d9;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,0.12);max-height:240px;overflow-y:auto;z-index:300;display:none;text-align:left}
+.search-suggest-item{padding:7px 12px;font-size:13px;color:#333;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-suggest-item:hover{background:#eef6fc;color:#1a3a5c}
 .clickable{cursor:pointer;transition:background 0.15s}
 .clickable:hover{background:#eef6fc}
 /* 状态变更提示 */
@@ -1014,6 +1019,11 @@ function renderOverview() {
 
     // ===== 项目成本汇总（引用 01项目数据录入） =====
     const projects=PROJ.projects||[];
+    (function(){
+        const set=new Set();
+        projects.forEach(p=>{ if(p.proj_name) set.add(p.proj_name); if(p.school) set.add(p.school); });
+        _costSearchNames=[...set].sort((a,b)=>a.localeCompare(b,'zh'));
+    })();
     const costMap={};
     (DATA.project_costs||[]).forEach(pc=>{costMap[pc.name]=pc;});
     const costYears=[...new Set(projects.map(p=>p.year||''))].sort().reverse();
@@ -1035,8 +1045,11 @@ function renderOverview() {
                 costStatuses.map(s=>'<option value="'+s+'">'+s+'</option>').join('')+'</select>'+
             '<select onchange="costFilters.delivery=this.value;renderOverview()"><option value="">全部交付情况</option>'+
                 costDeliveries.map(d=>'<option value="'+d+'">'+d+'</option>').join('')+'</select>'+
-            '<input type="text" placeholder="搜索学校/项目..." oninput="costFilters.search=this.value.toLowerCase();renderOverview()">'+
-            '<button class="btn btn-outline btn-sm" onclick="costFilters={year:\'2026\',region:\'\',status:\'\',delivery:\'\',search:\'\'};renderOverview()">🔄 重置</button>'+
+            '<div class="search-wrap">'+
+                '<input type="text" id="costSearchInput" placeholder="搜索学校/项目..." autocomplete="off" oninput="onCostSearchInput(this.value)" onfocus="onCostSearchInput(this.value)">'+
+                '<div class="search-suggest" id="costSearchSuggest"></div>'+
+            '</div>'+
+            '<button class="btn btn-outline btn-sm" onclick="costFilters={year:\'2026\',region:\'\',status:\'\',delivery:\'\',search:\'\'};document.getElementById(\'costSearchInput\')&&(document.getElementById(\'costSearchInput\').value=\'\');renderOverview()">🔄 重置</button>'+
         '</div></div>';
 
     let costFiltered=projects;
@@ -1094,6 +1107,36 @@ function renderOverview() {
         if(selects[3]) selects[3].value=costFilters.delivery;
     },100);
 }
+
+// 成本汇总筛选项目/学校名预览下拉
+let _costSearchNames = null;
+function onCostSearchInput(val){
+    const box = document.getElementById('costSearchSuggest');
+    if(!box) return;
+    const q = (val||'').trim().toLowerCase();
+    if(!_costSearchNames) _costSearchNames=[];
+    if(!q){ box.style.display='none'; box.innerHTML=''; return; }
+    const matches = _costSearchNames.filter(n=>n.toLowerCase().includes(q)).slice(0,12);
+    if(!matches.length){ box.style.display='none'; box.innerHTML=''; return; }
+    box.innerHTML = matches.map(n=>
+        '<div class="search-suggest-item" onmousedown="applyCostSearch(\''+
+        n.replace(/'/g,"\\'")+'\')">'+n+'</div>').join('');
+    box.style.display='block';
+}
+function applyCostSearch(name){
+    costFilters.search = name.toLowerCase();
+    const inp = document.getElementById('costSearchInput');
+    if(inp) inp.value = name;
+    const box = document.getElementById('costSearchSuggest');
+    if(box){ box.style.display='none'; box.innerHTML=''; }
+    renderOverview();
+}
+// 点击空白关闭预览
+document.addEventListener('click', function(e){
+    const wrap = document.querySelector('.search-wrap');
+    const box = document.getElementById('costSearchSuggest');
+    if(wrap && box && !wrap.contains(e.target)){ box.style.display='none'; box.innerHTML=''; }
+});
 
 function renderOverviewCharts(months) {
     destroyChart('overviewQtyChart'); destroyChart('overviewDurChart');
