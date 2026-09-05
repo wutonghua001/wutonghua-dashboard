@@ -488,9 +488,11 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .plan-table-wrap{overflow-x:auto;border-radius:10px;}
 /* 列标题行：整条 thead 共享一条水平紫蓝渐变（不再按 th 分割），列标题居于各自列中心 */
 .plan-table thead{background:linear-gradient(90deg,#667eea 0%,#764ba2 100%);}
-.plan-table thead th{background:transparent;color:#fff;font-weight:700;font-size:14px;padding:12px 16px;text-align:center;border:none;white-space:nowrap;line-height:1.4;}
+.plan-table thead:hover,.plan-table thead:hover th{background:transparent;}
+.plan-table thead th{background:transparent;color:#fff;font-weight:700;font-size:14px;padding:12px 14px;text-align:left;border:none;white-space:nowrap;line-height:1.4;}
 .plan-table tbody td{padding:8px 14px;background:#fff;border-bottom:1px solid #eef2f6;color:#334155;}
-.plan-table tbody tr:hover td{background:#f8fafc;}
+/* 表头底部首行紧贴渐变条带，hover 不变色；其余行 hover 变浅色 */
+.plan-table tbody tr:not(:first-child):hover td{background:#f8fafc;}
 /* 月份标题行 — 与月度计划 mp-month-header 完全一致的渐变风格（每月份独立配色） */
 .plan-month-row{cursor:pointer;user-select:none;}
 .plan-month-row td{color:#fff;font-weight:700;font-size:14px;padding:12px 18px;border:none;line-height:1.4;}
