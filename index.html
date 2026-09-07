@@ -484,13 +484,12 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .cat-digital{color:#f39c12!important;}
 .cat-interact{color:#27ae60!important;}
 /* 计划vs总结表格 — 抄月度计划 mp-month-header 渐变风格 */
-.plan-table{font-size:13px;border-collapse:collapse;width:100%;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);}
-/* 与 gr-table-wrap 同款：bounded 滚动容器，内部 600px 滑动；fixed 克隆表头在 thead 滚出视口时接管显示 */
+.plan-table{font-size:13px;border-collapse:separate;border-spacing:0;width:100%;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);}
+/* 与 gr-table-wrap 同款：bounded 滚动容器，内部 600px 滑动；thead th 用 position:sticky 钉容器顶部 */
 .plan-table-wrap{overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:600px;border-radius:10px;}
-/* 列标题行：整条 thead 共享一条水平紫蓝渐变（不再按 th 分割），列标题居于各自列中心 */
+/* 列标题行：整条 thead 共享一条水平紫蓝渐变（不再按 th 分割），列标题居于各自列中心；sticky 钉容器顶部 */
 .plan-table thead{background:linear-gradient(90deg,#667eea 0%,#764ba2 100%);}
-.plan-table thead tr:hover{background:transparent;}
-.plan-table thead th{background:transparent;color:#fff;font-weight:700;font-size:14px;padding:12px 14px;text-align:left;border:none;white-space:nowrap;line-height:1.4;}
+.plan-table thead th{background:transparent;color:#fff;font-weight:700;font-size:14px;padding:12px 14px;text-align:left;border:none;white-space:nowrap;line-height:1.4;position:sticky;top:0;z-index:5;box-shadow:inset 0 -2px 4px rgba(0,0,0,0.08);}
 .plan-table tbody td{padding:8px 14px;background:#fff;border-bottom:1px solid #eef2f6;color:#334155;}
 /* 表头底部首行紧贴渐变条带，hover 不变色；其余行 hover 变浅色 */
 .plan-table tbody tr:not(:first-child):hover td{background:#f8fafc;}
@@ -2544,82 +2543,6 @@ function buildRemainderTable(projectList){
     }
   }
   // 在 buildRemainderTable 渲染后延迟初始化
-  setTimeout(tryInit,100);
-})();
-
-// ============ 计划表表头冻结（JS方案，2026-09-07）============
-// CSS position:sticky 在 border-collapse:collapse 表格中不可靠，改用 fixed 定位克隆表头
-// 滚动到 dept-func-nav(top:148) 下方时悬浮克隆表头，跟随原表水平滚动同步列宽
-// ============ 计划表表头冻结（JS方案，2026-09-07 改写：对齐甘特图「项目余量」形式）============
-// 与项目余量表一致：克隆表头 + position:fixed 钉在视口最顶端(top:0)，原表头滚出视口后才显示，不悬浮在内容中间
-(function(){
-  var _overlay=null,_cloneTable=null,_origThead=null,_origWrap=null,_enabled=false;
-
-  function createOverlay(){
-    var wrap=document.querySelector('.plan-table-wrap');
-    if(!wrap) return;
-    var table=wrap.querySelector('.plan-table');
-    if(!table) return;
-    var thead=table.querySelector('thead');
-    if(!thead) return;
-    _origThead=thead; _origWrap=wrap;
-    var clone=thead.cloneNode(true);
-    _cloneTable=document.createElement('table');
-    _cloneTable.className='plan-table';
-    _cloneTable.style.cssText='border-collapse:collapse;font-size:13px;margin:0;width:100%';
-    _cloneTable.appendChild(clone);
-    _overlay=document.createElement('div');
-    _overlay.className='plan-sticky-header-fixed';
-    // 与余量表一致：top:0 钉视口顶部，z-index 高，滚出视口才显示
-    _overlay.style.cssText='position:fixed;top:0;left:0;z-index:9999;background:transparent;display:none;box-shadow:0 2px 8px rgba(0,0,0,0.12)';
-    _overlay.appendChild(_cloneTable);
-    document.body.appendChild(_overlay);
-    _enabled=true;
-    // 表格内部水平滚动时同步列宽与左偏移
-    wrap.addEventListener('scroll',function(){ if(_enabled&&_overlay.style.display==='block') syncWidths(); },{passive:true});
-  }
-
-  function syncWidths(){
-    if(!_enabled||!_origThead||!_cloneTable) return;
-    var origThs=_origThead.querySelectorAll('th');
-    var cloneThs=_cloneTable.querySelectorAll('th');
-    for(var i=0;i<origThs.length&&i<cloneThs.length;i++){
-      cloneThs[i].style.width=origThs[i].offsetWidth+'px';
-    }
-    if(_origWrap){
-      var tableEl=_origWrap.querySelector('.plan-table');
-      _cloneTable.style.width=tableEl.offsetWidth+'px';
-      _overlay.style.left=(-_origWrap.scrollLeft)+'px';
-    }
-  }
-
-  function onScroll(){
-    if(!_enabled||!_origThead) return;
-    var rect=_origThead.getBoundingClientRect();
-    // 原表头滚出视口顶部（底部越过视口上沿）才显示固定克隆
-    if(rect.bottom<0){
-      _overlay.style.display='block';
-      syncWidths();
-    }else{
-      _overlay.style.display='none';
-    }
-  }
-
-  window.addEventListener('scroll',onScroll,{passive:true});
-  window.addEventListener('resize',function(){ if(_enabled&&_overlay.style.display==='block') syncWidths(); });
-  // 切团队 / 视图切换时重建覆盖层
-  var _retry=0;
-  function tryInit(){
-    var wrap=document.querySelector('.plan-table-wrap');
-    if(wrap&&wrap.querySelector('.plan-table thead')){
-      // 重建前先清旧覆盖层，避免切团队时残留
-      if(_overlay){_overlay.remove();_overlay=null;_enabled=false;}
-      createOverlay();
-    }else if(_retry<20){
-      _retry++;
-      setTimeout(tryInit,200);
-    }
-  }
   setTimeout(tryInit,100);
 })();
 
