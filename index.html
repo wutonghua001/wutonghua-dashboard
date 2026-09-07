@@ -1699,8 +1699,6 @@ function renderDeptPlan(team){
     html+='</tbody></table></div></div>';
 
     container.innerHTML=html;
-    // 计划表表头冻结：每次切团队都重建覆盖层，确保指向新 thead
-    setTimeout(initPlanStickyHeader,30);
     setTimeout(()=>{
         const ctx=document.getElementById(chartId);
         if(ctx){
@@ -2551,68 +2549,78 @@ function buildRemainderTable(projectList){
 // ============ 计划表表头冻结（JS方案，2026-09-07）============
 // CSS position:sticky 在 border-collapse:collapse 表格中不可靠，改用 fixed 定位克隆表头
 // 滚动到 dept-func-nav(top:148) 下方时悬浮克隆表头，跟随原表水平滚动同步列宽
-var _planStickyOverlay=null,_planStickyClone=null,_planStickyOrigThead=null,_planStickyOrigWrap=null,_planStickyEnabled=false;
+// ============ 计划表表头冻结（JS方案，2026-09-07 改写：对齐甘特图「项目余量」形式）============
+// 与项目余量表一致：克隆表头 + position:fixed 钉在视口最顶端(top:0)，原表头滚出视口后才显示，不悬浮在内容中间
+(function(){
+  var _overlay=null,_cloneTable=null,_origThead=null,_origWrap=null,_enabled=false;
 
-function initPlanStickyHeader(){
-  // 切团队时清理旧覆盖层
-  if(_planStickyOverlay){_planStickyOverlay.remove();}
-  _planStickyOverlay=_planStickyClone=_planStickyOrigThead=_planStickyOrigWrap=null;
-  _planStickyEnabled=false;
-  var wrap=document.querySelector('.plan-table-wrap');
-  if(!wrap) return;
-  var table=wrap.querySelector('.plan-table');
-  if(!table) return;
-  var thead=table.querySelector('thead');
-  if(!thead) return;
-  _planStickyOrigThead=thead; _planStickyOrigWrap=wrap;
-  var clone=thead.cloneNode(true);
-  _planStickyClone=document.createElement('table');
-  _planStickyClone.className='plan-table';
-  _planStickyClone.style.cssText='border-collapse:collapse;font-size:13px;margin:0;width:100%';
-  _planStickyClone.appendChild(clone);
-  _planStickyOverlay=document.createElement('div');
-  _planStickyOverlay.className='plan-sticky-header-fixed';
-  // top 运行时动态测 deptFuncNav 底部（mc-inner 缩放会改变样式 top 的实际视口位置）
-  var nav=document.getElementById('deptFuncNav');
-  var navBottom=nav?Math.round(nav.getBoundingClientRect().bottom):0;
-  if(navBottom<100) navBottom=148;  // 兜底
-  _planStickyOverlay.style.cssText='position:fixed;top:'+navBottom+'px;left:0;z-index:87;background:transparent;border-radius:10px;display:none;overflow:hidden;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.08)';
-  _planStickyOverlay.appendChild(_planStickyClone);
-  document.body.appendChild(_planStickyOverlay);
-  _planStickyEnabled=true;
-}
-
-function syncPlanStickyWidths(){
-  if(!_planStickyEnabled||!_planStickyOrigThead||!_planStickyClone) return;
-  var origThs=_planStickyOrigThead.querySelectorAll('th');
-  var cloneThs=_planStickyClone.querySelectorAll('th');
-  for(var i=0;i<origThs.length&&i<cloneThs.length;i++){
-    cloneThs[i].style.width=origThs[i].offsetWidth+'px';
+  function createOverlay(){
+    var wrap=document.querySelector('.plan-table-wrap');
+    if(!wrap) return;
+    var table=wrap.querySelector('.plan-table');
+    if(!table) return;
+    var thead=table.querySelector('thead');
+    if(!thead) return;
+    _origThead=thead; _origWrap=wrap;
+    var clone=thead.cloneNode(true);
+    _cloneTable=document.createElement('table');
+    _cloneTable.className='plan-table';
+    _cloneTable.style.cssText='border-collapse:collapse;font-size:13px;margin:0;width:100%';
+    _cloneTable.appendChild(clone);
+    _overlay=document.createElement('div');
+    _overlay.className='plan-sticky-header-fixed';
+    // 与余量表一致：top:0 钉视口顶部，z-index 高，滚出视口才显示
+    _overlay.style.cssText='position:fixed;top:0;left:0;z-index:9999;background:transparent;display:none;box-shadow:0 2px 8px rgba(0,0,0,0.12)';
+    _overlay.appendChild(_cloneTable);
+    document.body.appendChild(_overlay);
+    _enabled=true;
+    // 表格内部水平滚动时同步列宽与左偏移
+    wrap.addEventListener('scroll',function(){ if(_enabled&&_overlay.style.display==='block') syncWidths(); },{passive:true});
   }
-  if(_planStickyOrigWrap){
-    var tableEl=_planStickyOrigWrap.querySelector('.plan-table');
-    var rect=_planStickyOrigWrap.getBoundingClientRect();
-    _planStickyOverlay.style.left=rect.left+'px';
-    _planStickyOverlay.style.width=_planStickyOrigWrap.offsetWidth+'px';
-    _planStickyClone.style.width=tableEl.offsetWidth+'px';
-  }
-}
 
-function onPlanStickyScroll(){
-  if(!_planStickyEnabled||!_planStickyOrigThead) return;
-  var rect=_planStickyOrigThead.getBoundingClientRect();
-  // 阈值 = 覆盖层顶部（动态测的 deptFuncNav 底部），原 thead 滚到阈值之下才显示
-  var navBottom=parseInt(_planStickyOverlay.style.top)||148;
-  if(rect.bottom<=navBottom){
-    _planStickyOverlay.style.display='block';
-    syncPlanStickyWidths();
-  }else{
-    _planStickyOverlay.style.display='none';
+  function syncWidths(){
+    if(!_enabled||!_origThead||!_cloneTable) return;
+    var origThs=_origThead.querySelectorAll('th');
+    var cloneThs=_cloneTable.querySelectorAll('th');
+    for(var i=0;i<origThs.length&&i<cloneThs.length;i++){
+      cloneThs[i].style.width=origThs[i].offsetWidth+'px';
+    }
+    if(_origWrap){
+      var tableEl=_origWrap.querySelector('.plan-table');
+      _cloneTable.style.width=tableEl.offsetWidth+'px';
+      _overlay.style.left=(-_origWrap.scrollLeft)+'px';
+    }
   }
-}
 
-window.addEventListener('scroll',onPlanStickyScroll,{passive:true});
-window.addEventListener('resize',function(){if(_planStickyEnabled&&_planStickyOverlay&&_planStickyOverlay.style.display==='block') syncPlanStickyWidths();});
+  function onScroll(){
+    if(!_enabled||!_origThead) return;
+    var rect=_origThead.getBoundingClientRect();
+    // 原表头滚出视口顶部（底部越过视口上沿）才显示固定克隆
+    if(rect.bottom<0){
+      _overlay.style.display='block';
+      syncWidths();
+    }else{
+      _overlay.style.display='none';
+    }
+  }
+
+  window.addEventListener('scroll',onScroll,{passive:true});
+  window.addEventListener('resize',function(){ if(_enabled&&_overlay.style.display==='block') syncWidths(); });
+  // 切团队 / 视图切换时重建覆盖层
+  var _retry=0;
+  function tryInit(){
+    var wrap=document.querySelector('.plan-table-wrap');
+    if(wrap&&wrap.querySelector('.plan-table thead')){
+      // 重建前先清旧覆盖层，避免切团队时残留
+      if(_overlay){_overlay.remove();_overlay=null;_enabled=false;}
+      createOverlay();
+    }else if(_retry<20){
+      _retry++;
+      setTimeout(tryInit,200);
+    }
+  }
+  setTimeout(tryInit,100);
+})();
 
 // ============ 状态筛选跳转 & 搜索回车滚动 ============
 // 点击筛选按钮后，如果余量表存在则滚动到对应分组
