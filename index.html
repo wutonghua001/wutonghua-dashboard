@@ -2626,12 +2626,24 @@ function buildRemainderTable(projectList){
       createOverlay();
       // 初始化后立即检查一次显示状态
       onWrapScroll();
-    }else if(_retry<20){
+    }else if(_retry<60){
       _retry++;
       setTimeout(tryInit,200);
     }
   }
   setTimeout(tryInit,100);
+  // 监听视图切换（DOM 变化）触发重新初始化
+  var _mo=new MutationObserver(function(){
+    var wrap=document.querySelector('.plan-table-wrap');
+    if(wrap&&wrap.querySelector('.plan-table thead')){
+      if(!_overlay||!document.body.contains(_overlay)){
+        if(_overlay){_overlay.remove();_overlay=null;_enabled=false;}
+        createOverlay();
+        onWrapScroll();
+      }
+    }
+  });
+  _mo.observe(document.body,{childList:true,subtree:true});
 })();
 
 // ============ 状态筛选跳转 & 搜索回车滚动 ============
