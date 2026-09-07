@@ -484,12 +484,13 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .cat-digital{color:#f39c12!important;}
 .cat-interact{color:#27ae60!important;}
 /* 计划vs总结表格 — 抄月度计划 mp-month-header 渐变风格 */
-.plan-table{font-size:13px;border-collapse:separate;border-spacing:0;width:100%;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);}
-/* 与 gr-table-wrap 同款：bounded 滚动容器，内部 600px 滑动；thead th 用 position:sticky 钉容器顶部 */
+.plan-table{font-size:13px;border-collapse:collapse;width:100%;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);}
+/* 与 gr-table-wrap 同款：bounded 滚动容器，内部 600px 滑动；表头克隆在 wrap 滚动时钉容器顶部 */
 .plan-table-wrap{overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:600px;border-radius:10px;}
-/* 列标题行：整条 thead 共享一条水平紫蓝渐变（不再按 th 分割），列标题居于各自列中心；sticky 钉容器顶部 */
+/* 列标题行：整条 thead 共享一条水平紫蓝渐变（不再按 th 分割），列标题居于各自列中心 */
 .plan-table thead{background:linear-gradient(90deg,#667eea 0%,#764ba2 100%);}
-.plan-table thead th{background:transparent;color:#fff;font-weight:700;font-size:14px;padding:12px 14px;text-align:left;border:none;white-space:nowrap;line-height:1.4;position:sticky;top:0;z-index:5;box-shadow:inset 0 -2px 4px rgba(0,0,0,0.08);}
+.plan-table thead tr:hover{background:transparent;}
+.plan-table thead th{background:transparent;color:#fff;font-weight:700;font-size:14px;padding:12px 14px;text-align:left;border:none;white-space:nowrap;line-height:1.4;}
 .plan-table tbody td{padding:8px 14px;background:#fff;border-bottom:1px solid #eef2f6;color:#334155;}
 /* 表头底部首行紧贴渐变条带，hover 不变色；其余行 hover 变浅色 */
 .plan-table tbody tr:not(:first-child):hover td{background:#f8fafc;}
@@ -2543,6 +2544,93 @@ function buildRemainderTable(projectList){
     }
   }
   // 在 buildRemainderTable 渲染后延迟初始化
+  setTimeout(tryInit,100);
+})();
+
+// ============ 计划表表头冻结（容器内部滚动版，2026-09-07）============
+// .mc-inner 的 transform:scale() 会破坏 CSS sticky，故改用 fixed 克隆方案（不受 transform 影响）
+// 克隆表头 + position:fixed 钉 wrap 顶部；监听 wrap 内部滚动（不是 window），wrap.scrollTop>0 即显示
+// 钉 wrap 顶部的设计：覆盖层 top = wrap.getBoundingClientRect().top（容器在视口哪里就钉哪里）
+// wrap 滚出视口时则隐藏，避免出现「容器已离开视口但表头还悬浮」的诡异画面
+(function(){
+  var _overlay=null,_cloneTable=null,_origThead=null,_origWrap=null,_enabled=false;
+
+  function createOverlay(){
+    var wrap=document.querySelector('.plan-table-wrap');
+    if(!wrap) return;
+    var table=wrap.querySelector('.plan-table');
+    if(!table) return;
+    var thead=table.querySelector('thead');
+    if(!thead) return;
+    _origThead=thead; _origWrap=wrap;
+    var clone=thead.cloneNode(true);
+    _cloneTable=document.createElement('table');
+    _cloneTable.className='plan-table';
+    _cloneTable.style.cssText='border-collapse:collapse;font-size:13px;margin:0';
+    _cloneTable.appendChild(clone);
+    _overlay=document.createElement('div');
+    _overlay.className='plan-sticky-header-fixed';
+    _overlay.style.cssText='position:fixed;top:0;left:0;z-index:88;background:transparent;display:none;box-shadow:0 2px 8px rgba(0,0,0,0.12);pointer-events:none;border-radius:10px;overflow:hidden';
+    _overlay.appendChild(_cloneTable);
+    document.body.appendChild(_overlay);
+    _enabled=true;
+    // 监听 wrap 内部滚动（不是 window）；wrap 水平滚动时同步 left 偏移
+    wrap.addEventListener('scroll',onWrapScroll,{passive:true});
+  }
+
+  function syncWidths(){
+    if(!_enabled||!_origThead||!_cloneTable||!_origWrap) return;
+    // 列宽
+    var origThs=_origThead.querySelectorAll('th');
+    var cloneThs=_cloneTable.querySelectorAll('th');
+    for(var i=0;i<origThs.length&&i<cloneThs.length;i++){
+      cloneThs[i].style.width=origThs[i].offsetWidth+'px';
+    }
+    // 容器内表格实际渲染宽度（受 border-collapse 等影响可能与 wrap 不同）
+    var tableEl=_origWrap.querySelector('.plan-table');
+    _cloneTable.style.width=tableEl.offsetWidth+'px';
+    // 覆盖层定位：top 钉 wrap 顶部，left 跟随 wrap 在视口的位置并减去 scrollLeft
+    var wrapRect=_origWrap.getBoundingClientRect();
+    _overlay.style.top=Math.round(wrapRect.top)+'px';
+    _overlay.style.left=(Math.round(wrapRect.left)-_origWrap.scrollLeft)+'px';
+    _overlay.style.width=_origWrap.offsetWidth+'px';
+  }
+
+  function onWrapScroll(){
+    if(!_enabled||!_origWrap) return;
+    // 显示条件：wrap 内部已滚动（>0）且 wrap 在视口内
+    var wrapRect=_origWrap.getBoundingClientRect();
+    var viewportH=window.innerHeight||document.documentElement.clientHeight;
+    if(_origWrap.scrollTop>0 && wrapRect.bottom>0 && wrapRect.top<viewportH){
+      _overlay.style.display='block';
+      syncWidths();
+    }else{
+      _overlay.style.display='none';
+    }
+  }
+
+  // wrap 在视口里的位置会随 window 滚动变化，要监听 window 同步 top/left
+  window.addEventListener('scroll',function(){
+    if(_enabled&&_overlay&&_overlay.style.display==='block') syncWidths();
+  },{passive:true});
+  window.addEventListener('resize',function(){
+    if(_enabled&&_overlay&&_overlay.style.display==='block') syncWidths();
+  });
+  // 切团队 / 视图切换时重建覆盖层
+  var _retry=0;
+  function tryInit(){
+    var wrap=document.querySelector('.plan-table-wrap');
+    if(wrap&&wrap.querySelector('.plan-table thead')){
+      // 重建前先清旧覆盖层，避免切团队时残留
+      if(_overlay){_overlay.remove();_overlay=null;_enabled=false;}
+      createOverlay();
+      // 初始化后立即检查一次显示状态
+      onWrapScroll();
+    }else if(_retry<20){
+      _retry++;
+      setTimeout(tryInit,200);
+    }
+  }
   setTimeout(tryInit,100);
 })();
 
