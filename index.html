@@ -65,7 +65,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Micr
 .month-chip.all{font-weight:600}
 .month-chip.no-data{opacity:0.3}
 /* 积分排行榜（v10.43） */
-.rank-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;justify-content:space-between}
+.rank-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:nowrap;justify-content:space-between;width:100%}
+.rank-toolbar>.rank-month-tabs{flex:1 1 auto;min-width:0;flex-wrap:wrap}
+.rank-toolbar>.rank-rc-wrap{flex:0 0 auto;display:flex;align-items:center;gap:8px}
 .rank-month-tabs{display:flex;gap:4px;flex-wrap:wrap;flex:1;min-width:0}
 .rank-search{padding:6px 10px;border:1px solid #d9e2ec;border-radius:14px;font-size:13px;background:#fff;min-width:140px;outline:none;transition:border-color 0.15s}
 .rank-search:focus{border-color:#667eea;box-shadow:0 0 0 2px rgba(102,126,234,0.18)}
@@ -78,7 +80,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Micr
 .rank-table input[type="checkbox"]{cursor:pointer;width:16px;height:16px;accent-color:#2d6a9f}
 .rank-table tbody tr.rank-jump-hl{background:linear-gradient(90deg,#fef3c7 0%,#fff 60%)!important;box-shadow:inset 0 0 0 2px #f59e0b;transition:background .3s,box-shadow .3s;}
 /* 排行榜表头冻结（fixed 克隆 + wrap 内部滚动，因 .mc-inner transform 破坏 sticky） */
-.rank-table-wrap{position:relative;max-height:420px;overflow:auto;border-radius:8px;border:1px solid #e2e8f0;background:#fff}
+.rank-table-wrap{position:relative;max-height:420px;overflow:auto;border-radius:8px;border:1px solid #e2e8f0;background:#fff;width:100%}
+.rank-section{width:100%;box-sizing:border-box}
 .rank-thead-float{position:fixed;z-index:88;background:#f1f5f9;color:#475569;font-weight:600;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.10);display:none;pointer-events:none;border-bottom:1px solid #cbd5e1}
 .rank-thead-float th{background:transparent;font-weight:600;color:#475569;padding:8px 6px;text-align:center;border:none;white-space:nowrap}
 /* 团队产出明细「通栏」网格：两端对齐页面（任务 5） */
@@ -1551,8 +1554,8 @@ function renderScoreRankBlock(){
     const personsAll = DATA.persons || {};
     const personTeam = DATA.person_team || {};
 
-    // 工具栏：单月 chip + 搜索框
-    let html = '<div class="dept-section" style="margin-top:16px">';
+    // 工具栏：单月 chip + 搜索框 + 对比人员下拉按钮
+    let html = '<div class="dept-section rank-section" style="margin-top:16px">';
     html += '<h3>🏆 积分排行榜</h3>';
     html += '<div class="rank-toolbar">';
     html += '<div class="rank-month-tabs">';
@@ -1563,7 +1566,14 @@ function renderScoreRankBlock(){
         html += '<span class="month-chip ' + active + '" onclick="onRankMonthChange(' + m + ',this)">' + m + '月</span>';
     });
     html += '</div>';
-    html += '<input type="text" id="rankSearchInput" class="rank-search" placeholder="🔍 搜索人员（输入关键词下方预览，↑↓选择，Enter/点击跳转）" value="' + esc(rankSearchKw) + '" autocomplete="off" oninput="rankDDOpenDropdown(this.value)" onkeydown="rankDDKey(event)" onfocus="rankDDOpenDropdown(this.value)" title="输入关键词实时下拉匹配人员；↑↓选择，Enter确认，Esc关闭">';
+    // 右侧：搜索框 + 对比人员下拉按钮
+    const rcCount = rankComparePersons.size;
+    html += '<div class="rank-rc-wrap">';
+    html += '<input type="text" id="rankSearchInput" class="rank-search" placeholder="🔍 搜索人员" value="' + esc(rankSearchKw) + '" autocomplete="off" oninput="rankDDOpenDropdown(this.value)" onkeydown="rankDDKey(event)" onfocus="rankDDOpenDropdown(this.value)" title="输入关键词实时下拉匹配人员；↑↓选择，Enter确认，Esc关闭">';
+    html += '<div class="rank-compare-wrap">';
+    html += '<button type="button" id="rankCompareBtn" class="rank-compare-btn ' + (rcCount>0?'has':'') + '" onclick="toggleRankCompareDropdown(event)" title="点击展开人员多选下拉（与甘特图下拉一致）">📊 对比人员 <span class="rc-count">' + rcCount + '</span></button>';
+    html += '</div>';
+    html += '</div>';
     html += '</div>';
 
     // 计算每人各月积分 + 累计
