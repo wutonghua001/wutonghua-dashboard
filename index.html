@@ -69,8 +69,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Micr
 .rank-toolbar>.rank-month-tabs{flex:1 1 auto;min-width:0;flex-wrap:wrap}
 .rank-toolbar>.rank-rc-wrap{flex:0 0 auto;display:flex;align-items:center;gap:8px}
 .rank-month-tabs{display:flex;gap:4px;flex-wrap:wrap;flex:1;min-width:0}
-.rank-search{padding:6px 10px;border:1px solid #d9e2ec;border-radius:14px;font-size:13px;background:#fff;min-width:140px;outline:none;transition:border-color 0.15s}
+.rank-search{padding:6px 28px 6px 10px;border:1px solid #d9e2ec;border-radius:14px;font-size:13px;background:#fff;min-width:140px;outline:none;transition:border-color 0.15s}
 .rank-search:focus{border-color:#667eea;box-shadow:0 0 0 2px rgba(102,126,234,0.18)}
+.rank-search-box{position:relative;display:inline-flex;align-items:center;flex:0 0 auto}
+.rank-search-clear{position:absolute;right:9px;top:50%;transform:translateY(-50%);width:16px;height:16px;display:none;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:13px;line-height:1;border-radius:50%;background:#eef2f7}
+.rank-search-clear.show{display:inline-flex}
+.rank-search-clear:hover{color:#ef4444;background:#fde8e8}
 .rank-table{font-size:13px}
 .rank-table thead th{background:#f1f5f9;color:#475569;font-weight:600;border-bottom:1px solid #cbd5e1;padding:8px 6px}
 .rank-table tbody td{padding:6px 8px;border-bottom:1px solid #eef2f6}
@@ -1569,7 +1573,10 @@ function renderScoreRankBlock(){
     // 右侧：搜索框 + 对比人员下拉按钮
     const rcCount = rankComparePersons.size;
     html += '<div class="rank-rc-wrap">';
+    html += '<div class="rank-search-box">';
     html += '<input type="text" id="rankSearchInput" class="rank-search" placeholder="🔍 搜索人员" value="' + esc(rankSearchKw) + '" autocomplete="off" oninput="rankDDOpenDropdown(this.value)" onkeydown="rankDDKey(event)" onfocus="rankDDOpenDropdown(this.value)" title="输入关键词实时下拉匹配人员；↑↓选择，Enter确认，Esc关闭">';
+    html += '<span class="rank-search-clear' + (rankSearchKw ? ' show' : '') + '" onclick="rankSearchClear()" title="清空搜索并返回全部">✕</span>';
+    html += '</div>';
     html += '<div class="rank-compare-wrap">';
     html += '<button type="button" id="rankCompareBtn" class="rank-compare-btn ' + (rcCount>0?'has':'') + '" onclick="toggleRankCompareDropdown(event)" title="点击展开人员多选下拉（与甘特图下拉一致）">📊 对比人员 <span class="rc-count">' + rcCount + '</span></button>';
     html += '</div>';
@@ -1804,6 +1811,15 @@ function rankDDKey(ev){
         return;
     }
 }
+// 清空搜索并返回完整列表（搜索框 ✕ 按钮）
+function rankSearchClear(){
+    rankSearchKw='';
+    const input=document.getElementById('rankSearchInput');
+    if(input){ input.value=''; }
+    rankCloseDD();
+    rerenderDeptView();
+    if(input) input.focus();
+}
 // 跳转：表格过滤到该人员并滚动高亮其行（绕过 .mc-inner transform 对 scrollIntoView 的影响）
 function rankJumpTo(person){
     if(!person) return;
@@ -1880,6 +1896,12 @@ function toggleRankCompareDropdown(ev){
             const wrap = document.querySelector('.rank-compare-wrap');
             if (wrap && (wrap.contains(e.target) || dd.contains(e.target))) return;
             closeRankCompareDropdown();
+        });
+        // 全局键盘：回车确定/关闭、Esc 关闭（在对比下拉打开时生效）
+        document.addEventListener('keydown', function(e){
+            if (!rankCompareDDOpen) return;
+            if (e.key === 'Enter') { e.preventDefault(); closeRankCompareDropdown(); }
+            else if (e.key === 'Escape') { closeRankCompareDropdown(); }
         });
     }
     if (rankCompareDDOpen) { closeRankCompareDropdown(); return; }
