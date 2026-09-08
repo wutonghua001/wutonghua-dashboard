@@ -64,6 +64,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Micr
 .month-chip.active::after{content:' ✓';font-size:11px}
 .month-chip.all{font-weight:600}
 .month-chip.no-data{opacity:0.3}
+/* 积分排行榜（v10.43） */
+.rank-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.rank-month-tabs{display:flex;gap:4px;flex-wrap:wrap;flex:1;min-width:0}
+.rank-search{padding:6px 10px;border:1px solid #d9e2ec;border-radius:14px;font-size:13px;background:#fff;min-width:140px;outline:none;transition:border-color 0.15s}
+.rank-search:focus{border-color:#667eea;box-shadow:0 0 0 2px rgba(102,126,234,0.18)}
+.rank-table{font-size:13px}
+.rank-table thead th{position:sticky;top:0;background:#f1f5f9;color:#475569;font-weight:600;border-bottom:1px solid #cbd5e1;padding:8px 6px;z-index:2}
+.rank-table tbody td{padding:6px 8px;border-bottom:1px solid #eef2f6}
+.rank-table .rank-top1 td:first-child{background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;font-weight:700;border-radius:4px}
+.rank-table .rank-top2 td:first-child{background:linear-gradient(135deg,#e2e8f0,#cbd5e1);color:#334155;font-weight:700;border-radius:4px}
+.rank-table .rank-top3 td:first-child{background:linear-gradient(135deg,#fed7aa,#fdba74);color:#9a3412;font-weight:700;border-radius:4px}
+.rank-table input[type="checkbox"]{cursor:pointer;width:16px;height:16px;accent-color:#2d6a9f}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px}
 .card{background:#fff;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06);transition:all 0.2s}
 .card:hover{box-shadow:0 3px 12px rgba(0,0,0,0.1);transform:translateY(-1px)}
@@ -686,6 +698,10 @@ let selectedMonths = [];
 let selectedPersons = [];
 let personScope = 'all';   // 'team' = 仅本团队对比；'all' = 全公司跨团队对比（默认全公司，避免积分图空白）
 let personMetric = 'qty';   // 人员对比指标：'qty' 数量 / 'dur' 时长 / 'points' 积分
+// ===== 积分排行榜（独立于 selectedMonths/personScope，全员全月口径）=====
+let rankSelectedMonth = 'all';   // 'all' = 累计积分；或 1-12 表示单月
+let rankComparePersons = new Set();   // 勾选参与对比的人员
+let rankSearchKw = '';
 let chartInstances = {};
 
 let projFilters = {year:'',region:'',status:'',delivery:'',search:''};
@@ -894,6 +910,9 @@ function renderDeptContent(){
         renderDeptProduce();
     }
 }
+
+// 通用：rerenderDeptView 等价于 renderDeptContent，用于排行榜内交互（月份/搜索）触发整视图重渲染
+function rerenderDeptView(){ renderDeptContent(); }
 
 // ========== 月份交互增强 ==========
 function toggleAllMonths(team,el) {
@@ -1489,33 +1508,11 @@ function renderDeptProduce(){
     html+='<div class="produce-right"><div class="dept-section"><h3>📈 每月各大类数量（堆叠条状图）</h3><div class="chart-box"><canvas id="'+outChart+'"></canvas></div></div></div>';
     html+='</div>'; // end first grid
 
-    // ===== 第二栏：人员积分折线图 + Top10 =====
+    // ===== 第二栏：人员积分折线图 + 积分排行榜 =====
     html+='<div class="produce-grid">';
     html+='<div class="produce-left"><div class="dept-section"><h3>👤 人员月度积分对比（折线图）</h3><div class="chart-box"><canvas id="'+ptsChart+'"></canvas></div></div></div>';
-    // 右：Top10
-    html+='<div class="produce-right"><div class="dept-section"><h3>🏆 积分 Top 10'+(personScope==='all'?'（全公司）':'（'+selectedDeptTeam+'）')+'</h3>';
-    if(personScope==='all'){
-        const rankMap={};
-        for(const [person,pdata] of Object.entries(personsAll)){
-            let tot=0;
-            for(const [mStr,ptypes] of Object.entries(pdata)){
-                const m=parseInt(mStr); if(!selectedMonths.includes(m)) continue;
-                for(const ptData of Object.values(ptypes)) tot+=(ptData.points||0);
-            }
-            if(tot>0) rankMap[person]=tot;
-        }
-        const ranked=Object.entries(rankMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
-        if(ranked.length){
-            html+='<div class="table-box"><table class="dept-cat-table"><thead><tr><th>排名</th><th>人员</th><th>团队</th><th>积分</th></tr></thead><tbody>';
-            ranked.forEach((r,i)=>{const tl=personTeam[r[0]]||'-';html+='<tr><td>'+(i+1)+'</td><td>'+r[0]+'</td><td>'+tl+'</td><td><strong>'+r[1].toFixed(1)+'</strong></td></tr>';});
-            html+='</tbody></table></div>';
-        } else {
-            html+='<div class="empty-state">所选月份暂无积分数据（源表积分列为空）</div>';
-        }
-    } else {
-        html+='<div class="empty-state">切换为「全公司」可查看积分 Top10</div>';
-    }
-    html+='</div></div>'; // end right
+    // 右：积分排行榜
+    html += renderScoreRankBlock();
     html+='</div>'; // end second grid
     container.innerHTML=html;
 
@@ -1529,6 +1526,7 @@ function renderDeptProduce(){
         }
         updatePersonTags2();
         renderDeptPointsChart(personMonthly,months);
+        updateRankCompareChart();
     },60);
 }
 
@@ -1608,6 +1606,200 @@ function normalizeProjName(name){
 // 判断两个项目名是否指向同一项目（归一化后相同即视为同一项目）
 function isSameProject(a,b){
     return normalizeProjName(a)===normalizeProjName(b);
+}
+
+// ===== 积分排行榜（v10.43 新增）=====
+// 口径：全员（不受 selectedMonths/personScope 影响），按月显示每人积分，列含各月+累计+对比勾选
+// 数据源：DATA.persons[person][month][ptype].points（即 n0pe40 2026年数据底版「积分」列）
+function renderScoreRankBlock(){
+    const monthsAll = DATA.all_months || [];
+    const personsAll = DATA.persons || {};
+    const personTeam = DATA.person_team || {};
+
+    // 工具栏：单月 chip + 搜索框
+    let html = '<div class="produce-right"><div class="dept-section">';
+    html += '<h3>🏆 积分排行榜</h3>';
+    html += '<div class="rank-toolbar">';
+    html += '<div class="rank-month-tabs">';
+    const isAllMonth = rankSelectedMonth === 'all';
+    html += '<span class="month-chip all ' + (isAllMonth?'active':'') + '" onclick="onRankMonthChange(\'all\',this)">累计</span>';
+    monthsAll.forEach(m=>{
+        const active = rankSelectedMonth===m ? 'active' : '';
+        html += '<span class="month-chip ' + active + '" onclick="onRankMonthChange(' + m + ',this)">' + m + '月</span>';
+    });
+    html += '</div>';
+    html += '<input type="search" class="rank-search" placeholder="🔍 搜索人员" value="' + esc(rankSearchKw) + '" oninput="onRankSearch(this.value)">';
+    html += '</div>';
+
+    // 计算每人各月积分 + 累计
+    const rankData = {};
+    for (const person of Object.keys(personsAll)) {
+        rankData[person] = {total: 0, byMonth: {}};
+        monthsAll.forEach(m => rankData[person].byMonth[m] = 0);
+        const pdata = personsAll[person] || {};
+        for (const [mStr, ptypes] of Object.entries(pdata)) {
+            const m = parseInt(mStr);
+            if (!monthsAll.includes(m)) continue;
+            let sum = 0;
+            for (const ptData of Object.values(ptypes)) sum += (ptData.points || 0);
+            rankData[person].byMonth[m] = sum;
+            rankData[person].total += sum;
+        }
+    }
+
+    // 排序：按当前所选月（累计 = total）
+    const sortKey = rankSelectedMonth;
+    const filtered = Object.entries(rankData).filter(([p, d]) => {
+        const sortVal = sortKey === 'all' ? d.total : (d.byMonth[sortKey] || 0);
+        if (sortVal <= 0) return false;  // 隐藏所选月份积分 0 的人
+        if (rankSearchKw && !p.includes(rankSearchKw)) return false;
+        return true;
+    });
+    filtered.sort((a, b) => {
+        const av = sortKey === 'all' ? a[1].total : (a[1].byMonth[sortKey] || 0);
+        const bv = sortKey === 'all' ? b[1].total : (b[1].byMonth[sortKey] || 0);
+        return bv - av;
+    });
+
+    if (filtered.length === 0) {
+        html += '<div class="empty-state">' + (rankSearchKw ? '未匹配到「'+esc(rankSearchKw)+'」' : '暂无积分数据（源表积分列为空）') + '</div></div></div>';
+        return html;
+    }
+
+    // 表格：排名 | 人员 | 团队 | 各月积分 | 累计 | 对比
+    html += '<div class="table-box" style="max-height:420px;overflow:auto;border-radius:8px"><table class="dept-cat-table rank-table"><thead><tr>';
+    html += '<th style="width:48px">排名</th><th style="min-width:90px">人员</th><th style="min-width:90px">团队</th>';
+    monthsAll.forEach(m => {
+        const isSort = rankSelectedMonth === m;
+        html += '<th style="min-width:60px;text-align:right' + (isSort?';background:rgba(102,126,234,0.18)':'') + '">' + m + '月</th>';
+    });
+    html += '<th style="min-width:80px;text-align:right' + (rankSelectedMonth==='all'?';background:rgba(102,126,234,0.18)':'') + '">累计</th>';
+    html += '<th style="width:60px;text-align:center">对比</th>';
+    html += '</tr></thead><tbody>';
+
+    filtered.forEach(([person, d], i) => {
+        const rank = i + 1;
+        const team = personTeam[person] || '-';
+        const isChecked = rankComparePersons.has(person);
+        const sortVal = sortKey === 'all' ? d.total : (d.byMonth[sortKey] || 0);
+        // 排名行高亮（前三名）
+        const rankClass = rank <= 3 ? 'rank-top' + rank : '';
+        html += '<tr class="' + rankClass + '">';
+        html += '<td><strong>' + rank + '</strong></td>';
+        html += '<td>' + esc(person) + '</td>';
+        html += '<td>' + esc(team) + '</td>';
+        monthsAll.forEach(m => {
+            const v = d.byMonth[m] || 0;
+            const isSortCol = rankSelectedMonth === m;
+            html += '<td style="text-align:right' + (isSortCol?';background:rgba(102,126,234,0.10);font-weight:700':'') + '">' + (v>0?v.toFixed(1):'<span style="color:#cbd5e1">—</span>') + '</td>';
+        });
+        html += '<td style="text-align:right;font-weight:700;color:#2d6a9f' + (rankSelectedMonth==='all'?';background:rgba(102,126,234,0.10)':'') + '">' + d.total.toFixed(1) + '</td>';
+        html += '<td style="text-align:center"><input type="checkbox" data-person="' + esc(person) + '" ' + (isChecked?'checked':'') + ' onchange="onRankPersonToggle(this)"></td>';
+        html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+
+    // 对比柱状图（勾选人员后即时更新）
+    html += '<div style="margin-top:12px">';
+    html += '<div style="font-size:12px;color:#64748b;margin-bottom:6px">📊 已选 ' + rankComparePersons.size + ' 人参与对比（勾选表格行末复选框）</div>';
+    html += '<div class="chart-box" style="height:240px"><canvas id="rankCompareChart"></canvas></div>';
+    html += '</div>';
+
+    html += '</div></div>';  // end produce-right + dept-section
+    return html;
+}
+
+// 月份筛选切换（"累计" = 'all'，或单月 1-12）
+function onRankMonthChange(m, el){
+    rankSelectedMonth = m;
+    rerenderDeptView();
+}
+
+// 搜索人员名
+function onRankSearch(kw){
+    rankSearchKw = kw || '';
+    rerenderDeptView();
+}
+
+// 勾选/取消对比人员
+function onRankPersonToggle(cb){
+    const p = cb.getAttribute('data-person');
+    if (cb.checked) rankComparePersons.add(p);
+    else rankComparePersons.delete(p);
+    // 只刷新对比柱状图（不重渲染整视图，避免勾选抖动）
+    updateRankCompareChart();
+}
+
+// 渲染/更新对比柱状图
+function updateRankCompareChart(){
+    const ctx = document.getElementById('rankCompareChart');
+    if (!ctx) return;
+    const monthsAll = DATA.all_months || [];
+    const personsAll = DATA.persons || {};
+    if (rankComparePersons.size === 0) {
+        if (chartInstances['rankCompareChart']) {
+            chartInstances['rankCompareChart'].destroy();
+            delete chartInstances['rankCompareChart'];
+        }
+        const c = ctx.getContext('2d');
+        c.clearRect(0, 0, ctx.width, ctx.height);
+        ctx.parentElement.parentElement.querySelector('.rank-compare-empty')?.remove();
+        // 写一个空状态文字
+        let empty = ctx.parentElement.querySelector('.rank-compare-empty');
+        if (!empty) {
+            empty = document.createElement('div');
+            empty.className = 'rank-compare-empty empty-state';
+            empty.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:13px';
+            empty.textContent = '请勾选左侧人员参与对比';
+            ctx.parentElement.appendChild(empty);
+        }
+        return;
+    }
+    // 有勾选 → 移除空状态
+    ctx.parentElement.querySelector('.rank-compare-empty')?.remove();
+
+    // 收集勾选人员的月度积分
+    const baseColors = ['#3498db','#e74c3c','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e','#16a085','#c0392b'];
+    const datasets = [];
+    let colorIdx = 0;
+    for (const person of rankComparePersons) {
+        const pdata = personsAll[person] || {};
+        const monthlyData = monthsAll.map(m => {
+            let sum = 0;
+            const ptypes = pdata[m];
+            if (ptypes) {
+                for (const ptData of Object.values(ptypes)) sum += (ptData.points || 0);
+            }
+            return sum;
+        });
+        datasets.push({
+            label: person,
+            data: monthlyData,
+            backgroundColor: baseColors[colorIdx % baseColors.length],
+            borderWidth: 0,
+            borderRadius: 4
+        });
+        colorIdx++;
+    }
+
+    if (chartInstances['rankCompareChart']) {
+        chartInstances['rankCompareChart'].destroy();
+    }
+    chartInstances['rankCompareChart'] = new Chart(ctx, {
+        type: 'bar',
+        data: {labels: monthsAll.map(m => m + '月'), datasets},
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {position: 'bottom', labels: {boxWidth: 12, padding: 8, font: {size: 11}}}
+            },
+            scales: {
+                x: {grid: {display: false}},
+                y: {title: {display: true, text: '积分', font: {size: 11}}, beginAtZero: true, grid: {color: '#eee'}}
+            }
+        }
+    });
 }
 
 function renderDeptPlan(team){
