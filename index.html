@@ -559,6 +559,23 @@ tr.selected-row{background:#e8f4fd !important;outline:1px solid #3498db}
 .gt-dd-name{font-size:13.5px;color:#1a3a5c;font-weight:600;line-height:1.4;word-break:break-word;}
 .gt-dd-meta{font-size:11.5px;color:#7f8c9d;display:flex;align-items:center;gap:6px;margin-top:2px;}
 .gt-dd-empty{padding:16px;color:#95a5a6;font-size:13.5px;text-align:center;}
+/* 积分对比：下拉式人员多选（与甘特图下拉一致） */
+.rank-compare-wrap{position:relative;display:inline-block;margin-left:8px}
+.rank-compare-btn{font-size:13px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:18px;background:#fff;color:#1a3a5c;cursor:pointer;line-height:1.2;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+.rank-compare-btn:hover{background:#f1f5f9;border-color:#94a3b8}
+.rank-compare-btn.has{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:transparent;font-weight:600}
+.rank-compare-btn .rc-count{font-size:11px;background:rgba(255,255,255,.25);padding:1px 6px;border-radius:10px}
+.rank-compare-btn.has .rc-count{background:rgba(255,255,255,.3)}
+.rank-compare-dd{display:none;position:fixed;z-index:9999;background:#fff;border:1px solid #d9e2ec;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.18);max-height:360px;overflow-y:auto;min-width:280px;padding:6px 0}
+.rank-compare-dd.open{display:block}
+.rank-compare-dd-head{padding:8px 14px;font-size:12px;color:#64748b;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;background:#f8fafc}
+.rank-compare-dd-head a{color:#3b82f6;cursor:pointer;font-size:12px;text-decoration:none}
+.rank-compare-dd-item{padding:8px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid #f0f2f5;font-size:13px;line-height:1.4}
+.rank-compare-dd-item:last-child{border-bottom:none}
+.rank-compare-dd-item:hover{background:#eaf4fc}
+.rank-compare-dd-item input[type=checkbox]{margin:0;cursor:pointer;width:14px;height:14px;flex-shrink:0}
+.rank-compare-dd-item .rc-name{color:#1a3a5c;font-weight:600;flex:1;word-break:break-word}
+.rank-compare-dd-item .rc-team{font-size:11.5px;color:#7f8c9d;background:#f1f5f9;padding:1px 6px;border-radius:8px;flex-shrink:0}
 /* 甘特图搜索框 */
 .gantt-search-input{padding:5px 12px;border:1px solid #d9e2ec;border-radius:6px;font-size:13px;width:200px;outline:none;transition:border-color .15s,box-shadow .15s;background:#fff;color:#333;}
 .gantt-search-input:focus{border-color:#3498db;box-shadow:0 0 0 2px rgba(52,152,219,.15);}
@@ -1584,7 +1601,7 @@ function renderScoreRankBlock(){
         return html;
     }
 
-    // 表格：排名 | 人员 | 团队 | 各月积分 | 累计 | 对比
+    // 表格：排名 | 人员 | 团队 | 各月积分 | 累计（对比改为顶部下拉多选）
     html += '<div class="rank-table-wrap"><table class="dept-cat-table rank-table"><thead><tr>';
     html += '<th style="width:48px">排名</th><th style="width:90px">人员</th><th style="width:90px">团队</th>';
     monthsAll.forEach(m => {
@@ -1592,14 +1609,11 @@ function renderScoreRankBlock(){
         html += '<th style="text-align:right' + (isSort?';background:rgba(102,126,234,0.18)':'') + '">' + m + '月</th>';
     });
     html += '<th style="width:80px;text-align:right' + (rankSelectedMonth==='all'?';background:rgba(102,126,234,0.18)':'') + '">累计</th>';
-    html += '<th style="width:60px;text-align:center">对比</th>';
     html += '</tr></thead><tbody>';
 
     filtered.forEach(([person, d], i) => {
         const rank = i + 1;
         const team = personTeam[person] || '-';
-        const isChecked = rankComparePersons.has(person);
-        const sortVal = sortKey === 'all' ? d.total : (d.byMonth[sortKey] || 0);
         // 排名行高亮（前三名）
         const rankClass = rank <= 3 ? 'rank-top' + rank : '';
         html += '<tr class="' + rankClass + '" data-rperson="' + esc(person) + '">';
@@ -1612,15 +1626,14 @@ function renderScoreRankBlock(){
             html += '<td style="text-align:right' + (isSortCol?';background:rgba(102,126,234,0.10);font-weight:700':'') + '">' + (v>0?v.toFixed(1):'<span style="color:#cbd5e1">—</span>') + '</td>';
         });
         html += '<td style="text-align:right;font-weight:700;color:#2d6a9f' + (rankSelectedMonth==='all'?';background:rgba(102,126,234,0.10)':'') + '">' + d.total.toFixed(1) + '</td>';
-        html += '<td style="text-align:center"><input type="checkbox" data-person="' + esc(person) + '" ' + (isChecked?'checked':'') + ' onchange="onRankPersonToggle(this)"></td>';
         html += '</tr>';
     });
     html += '</tbody></table></div>';
 
     // 对比柱状图（勾选人员后即时更新）
     html += '<div style="margin-top:12px">';
-    html += '<div style="font-size:12px;color:#64748b;margin-bottom:6px">📊 已选 ' + rankComparePersons.size + ' 人参与对比（勾选表格行末复选框）</div>';
-    html += '<div class="chart-box" style="height:240px"><canvas id="rankCompareChart"></canvas></div>';
+    html += '<div id="rankCompareHint" style="font-size:12px;color:#64748b;margin-bottom:6px">📊 点击右上「对比人员」按钮选择人员查看对比图</div>';
+    html += '<div class="chart-box" style="height:240px;position:relative"><canvas id="rankCompareChart"></canvas></div>';
     html += '</div>';
 
     html += '</div>';  // end dept-section
@@ -1806,11 +1819,90 @@ function rankJumpTo(person){
 }
 
 // 勾选/取消对比人员
-function onRankPersonToggle(cb){
-    const p = cb.getAttribute('data-person');
-    if (cb.checked) rankComparePersons.add(p);
-    else rankComparePersons.delete(p);
-    // 只刷新对比柱状图（不重渲染整视图，避免勾选抖动）
+// ===== 积分对比：下拉式人员多选（与甘特图下拉一致）=====
+let rankCompareDDOpen = false;
+function buildRankCompareDropdown(){
+    const dd = document.getElementById('rankCompareDD');
+    if (!dd) return null;
+    const personsAll = DATA.persons || {};
+    const personTeam = DATA.person_team || {};
+    // 按当月积分降序（与表格一致）
+    const sortKey = rankSelectedMonth;
+    const arr = Object.keys(personsAll).map(p => {
+        const pdata = personsAll[p] || {};
+        let total = 0, mVal = 0;
+        for (const [mStr, ptypes] of Object.entries(pdata)) {
+            const m = parseInt(mStr);
+            if (!(DATA.all_months || []).includes(m)) continue;
+            let s = 0; for (const pt of Object.values(ptypes)) s += (pt.points || 0);
+            total += s; if (m === sortKey) mVal = s;
+        }
+        return { p, team: personTeam[p] || '', total, mVal };
+    });
+    const sortVal = (x) => sortKey === 'all' ? x.total : x.mVal;
+    arr.sort((a, b) => sortVal(b) - sortVal(a));
+    // 头部：全选 / 清空
+    let html = '<div class="rank-compare-dd-head"><span>选择人员（' + arr.length + ' 人）</span>'
+        + '<span><a onclick="rankCompareSelectAll(true)">全选</a> · <a onclick="rankCompareSelectAll(false)">清空</a></span></div>';
+    arr.forEach((it) => {
+        const checked = rankComparePersons.has(it.p) ? 'checked' : '';
+        const v = sortKey === 'all' ? it.total : it.mVal;
+        html += '<label class="rank-compare-dd-item">'
+            + '<input type="checkbox" ' + checked + ' onchange="onRankCompareCheck(\'' + it.p.replace(/'/g, "\\'") + '\', this.checked)">'
+            + '<span class="rc-name">' + esc(it.p) + (v > 0 ? ' <span style="color:#94a3b8;font-weight:400;font-size:11.5px">· ' + v.toFixed(1) + '</span>' : '') + '</span>'
+            + (it.team ? '<span class="rc-team">' + esc(it.team) + '</span>' : '')
+            + '</label>';
+    });
+    dd.innerHTML = html;
+    return dd;
+}
+function toggleRankCompareDropdown(ev){
+    if (ev) { ev.stopPropagation(); }
+    let dd = document.getElementById('rankCompareDD');
+    if (!dd) {
+        dd = document.createElement('div');
+        dd.id = 'rankCompareDD';
+        dd.className = 'rank-compare-dd';
+        document.body.appendChild(dd);
+        // 全局点击关闭
+        document.addEventListener('click', function(e){
+            if (!rankCompareDDOpen) return;
+            const wrap = document.querySelector('.rank-compare-wrap');
+            if (wrap && (wrap.contains(e.target) || dd.contains(e.target))) return;
+            closeRankCompareDropdown();
+        });
+    }
+    if (rankCompareDDOpen) { closeRankCompareDropdown(); return; }
+    buildRankCompareDropdown();
+    const btn = document.getElementById('rankCompareBtn');
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    dd.style.position = 'fixed';
+    dd.style.left = r.left + 'px';
+    dd.style.top = (r.bottom + 6) + 'px';
+    dd.style.minWidth = Math.max(r.width, 280) + 'px';
+    dd.classList.add('open');
+    rankCompareDDOpen = true;
+}
+function closeRankCompareDropdown(){
+    const dd = document.getElementById('rankCompareDD');
+    if (dd) dd.classList.remove('open');
+    rankCompareDDOpen = false;
+}
+function onRankCompareCheck(person, checked){
+    if (checked) rankComparePersons.add(person);
+    else rankComparePersons.delete(person);
+    updateRankCompareChart();
+}
+function rankCompareSelectAll(flag){
+    const personsAll = DATA.persons || {};
+    if (flag) {
+        Object.keys(personsAll).forEach(p => rankComparePersons.add(p));
+    } else {
+        rankComparePersons.clear();
+    }
+    // 重建下拉（刷新勾选状态）
+    buildRankCompareDropdown();
     updateRankCompareChart();
 }
 
@@ -1820,6 +1912,7 @@ function updateRankCompareChart(){
     if (!ctx) return;
     const monthsAll = DATA.all_months || [];
     const personsAll = DATA.persons || {};
+    const hint = document.getElementById('rankCompareHint');
     if (rankComparePersons.size === 0) {
         if (chartInstances['rankCompareChart']) {
             chartInstances['rankCompareChart'].destroy();
@@ -1827,20 +1920,19 @@ function updateRankCompareChart(){
         }
         const c = ctx.getContext('2d');
         c.clearRect(0, 0, ctx.width, ctx.height);
-        ctx.parentElement.parentElement.querySelector('.rank-compare-empty')?.remove();
-        // 写一个空状态文字
-        let empty = ctx.parentElement.querySelector('.rank-compare-empty');
-        if (!empty) {
-            empty = document.createElement('div');
-            empty.className = 'rank-compare-empty empty-state';
-            empty.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:13px';
-            empty.textContent = '请勾选左侧人员参与对比';
-            ctx.parentElement.appendChild(empty);
-        }
+        // 提示文字（不创建 absolute DOM，避免逃逸到其他区域）
+        if (hint) hint.innerHTML = '📊 点击右上「对比人员」按钮选择人员查看对比图';
         return;
     }
-    // 有勾选 → 移除空状态
-    ctx.parentElement.querySelector('.rank-compare-empty')?.remove();
+    // 有勾选 → 提示已选人数
+    if (hint) hint.innerHTML = '📊 已选 <b style="color:#2d6a9f">' + rankComparePersons.size + '</b> 人参与对比';
+    // 同步按钮高亮 + 计数
+    const btn = document.getElementById('rankCompareBtn');
+    if (btn) {
+        btn.classList.toggle('has', rankComparePersons.size > 0);
+        const cnt = btn.querySelector('.rc-count');
+        if (cnt) cnt.textContent = rankComparePersons.size;
+    }
 
     // 收集勾选人员的月度积分
     const baseColors = ['#3498db','#e74c3c','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e','#16a085','#c0392b'];
