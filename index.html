@@ -1585,19 +1585,23 @@ function renderScoreRankBlock(){
     html += '</div>';
     html += '</div>';
 
+    html += '<div style="font-size:12px;color:#64748b;margin:6px 0 2px">每格：上方＝当月积分，下方＝当月总工时(h)（来源：2026年数据底版 M 列）</div>';
+
     // 计算每人各月积分 + 累计
     const rankData = {};
     for (const person of Object.keys(personsAll)) {
-        rankData[person] = {total: 0, byMonth: {}};
-        monthsAll.forEach(m => rankData[person].byMonth[m] = 0);
+        rankData[person] = {total: 0, totalHours: 0, byMonth: {}, byMonthHours: {}};
+        monthsAll.forEach(m => { rankData[person].byMonth[m] = 0; rankData[person].byMonthHours[m] = 0; });
         const pdata = personsAll[person] || {};
         for (const [mStr, ptypes] of Object.entries(pdata)) {
             const m = parseInt(mStr);
             if (!monthsAll.includes(m)) continue;
-            let sum = 0;
-            for (const ptData of Object.values(ptypes)) sum += (ptData.points || 0);
+            let sum = 0, sumH = 0;
+            for (const ptData of Object.values(ptypes)) { sum += (ptData.points || 0); sumH += (ptData.hours || 0); }
             rankData[person].byMonth[m] = sum;
+            rankData[person].byMonthHours[m] = sumH;
             rankData[person].total += sum;
+            rankData[person].totalHours += sumH;
         }
     }
 
@@ -1639,10 +1643,19 @@ function renderScoreRankBlock(){
             html += '<td>' + esc(team) + '</td>';
             monthsAll.forEach(m => {
                 const v = d.byMonth[m] || 0;
+                const h = d.byMonthHours[m] || 0;
                 const isSortCol = rankSelectedMonth === m;
-                html += '<td style="text-align:right' + (isSortCol?';background:rgba(102,126,234,0.10);font-weight:700':'') + '">' + (v>0?v.toFixed(1):'<span style="color:#cbd5e1">—</span>') + '</td>';
+                const ptsTxt = v>0 ? v.toFixed(1) : '<span style="color:#cbd5e1">—</span>';
+                const hrsTxt = h>0 ? h.toFixed(1)+'h' : '<span style="color:#e2e8f0">0</span>';
+                html += '<td style="text-align:right;line-height:1.25' + (isSortCol?';background:rgba(102,126,234,0.10);font-weight:700':'') + '">'
+                      + '<div style="font-size:13px">'+ptsTxt+'</div>'
+                      + '<div style="font-size:11px;color:#94a3b8;margin-top:1px">'+hrsTxt+'</div>'
+                      + '</td>';
             });
-            html += '<td style="text-align:right;font-weight:700;color:#2d6a9f' + (rankSelectedMonth==='all'?';background:rgba(102,126,234,0.10)':'') + '">' + d.total.toFixed(1) + '</td>';
+            html += '<td style="text-align:right;font-weight:700;color:#2d6a9f;line-height:1.25' + (rankSelectedMonth==='all'?';background:rgba(102,126,234,0.10)':'') + '">'
+                  + '<div style="font-size:13px">'+d.total.toFixed(1)+'</div>'
+                  + '<div style="font-size:11px;color:#64748b;margin-top:1px">'+d.totalHours.toFixed(1)+'h</div>'
+                  + '</td>';
             html += '</tr>';
         });
         html += '</tbody></table></div>';
